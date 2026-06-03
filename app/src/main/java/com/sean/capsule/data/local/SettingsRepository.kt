@@ -16,7 +16,13 @@ class SettingsRepository(private val context: Context) {
         val SERVER_OPTION = stringPreferencesKey("server_option")
         val CUSTOM_URL = stringPreferencesKey("custom_url")
         val CUSTOM_PROTOCOL_INDEX = intPreferencesKey("custom_protocol_index")
+        val ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
     }
+
+    val onboardingCompleted: Flow<Boolean> = context.dataStore.data
+        .map { preferences ->
+            preferences[PreferencesKeys.ONBOARDING_COMPLETED] ?: false
+        }
 
     val hapticsEnabled: Flow<Boolean> = context.dataStore.data
         .map { preferences ->
@@ -59,6 +65,12 @@ class SettingsRepository(private val context: Context) {
     suspend fun updateCustomProtocolIndex(index: Int) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.CUSTOM_PROTOCOL_INDEX] = index
+        }
+    }
+
+    suspend fun updateOnboardingCompleted(completed: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.ONBOARDING_COMPLETED] = completed
         }
     }
 }

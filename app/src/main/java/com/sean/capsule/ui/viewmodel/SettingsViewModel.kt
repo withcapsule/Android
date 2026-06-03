@@ -22,6 +22,9 @@ enum class ServerOption(val displayName: String, val baseUrl: String?) {
 }
 
 class SettingsViewModel(private val repository: SettingsRepository) : ViewModel() {
+    val onboardingCompleted: StateFlow<Boolean> = repository.onboardingCompleted
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
     val hapticsEnabled: StateFlow<Boolean> = repository.hapticsEnabled
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
@@ -68,6 +71,12 @@ class SettingsViewModel(private val repository: SettingsRepository) : ViewModel(
         }
     }
 
+    fun setOnboardingCompleted(completed: Boolean) {
+        viewModelScope.launch {
+            repository.updateOnboardingCompleted(completed)
+        }
+    }
+
     fun updateServerOption(option: String) {
         _serverOption.value = option
         clearPingResponse()
@@ -89,17 +98,22 @@ class SettingsViewModel(private val repository: SettingsRepository) : ViewModel(
         clearPingResponse()
     }
 
-    fun saveAndPingServer() {
+    fun saveServerConfig() {
         viewModelScope.launch {
             val isDefault = _serverOption.value == ServerOption.Default.name
-
-
             repository.updateServerOption(_serverOption.value)
             if (!isDefault) {
                 repository.updateCustomUrl(_customUrl.value)
                 repository.updateCustomProtocolIndex(_customProtocolIndex.value)
             }
+        }
+    }
 
+    fun saveAndPingServer() {
+        viewModelScope.launch {
+            saveServerConfig()
+
+            val isDefault = _serverOption.value == ServerOption.Default.name
             val url = if (isDefault) {
                 ServerOption.Default.baseUrl!!
             } else {

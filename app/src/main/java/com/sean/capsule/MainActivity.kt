@@ -31,10 +31,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.sean.capsule.data.local.SettingsRepository
-import com.sean.capsule.ui.screens.DownloadScreen
-import com.sean.capsule.ui.screens.HistoryScreen
-import com.sean.capsule.ui.screens.SettingsScreen
-import com.sean.capsule.ui.screens.UploadScreen
+import com.sean.capsule.ui.screens.*
 import com.sean.capsule.ui.theme.CapsuleTheme
 import com.sean.capsule.ui.viewmodel.SettingsViewModel
 import kotlinx.serialization.Serializable
@@ -48,9 +45,30 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             CapsuleTheme {
-                AppNavigation()
+                MainContent()
             }
         }
+    }
+}
+
+@Composable
+fun MainContent() {
+    val context = LocalContext.current
+    val settingsRepository = remember { SettingsRepository(context) }
+    val settingsViewModel: SettingsViewModel = viewModel(
+        factory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                return SettingsViewModel(settingsRepository) as T
+            }
+        }
+    )
+    val onboardingCompleted by settingsViewModel.onboardingCompleted.collectAsState()
+
+    if (onboardingCompleted) {
+        AppNavigation(settingsViewModel)
+    } else {
+        OnboardingScreen(settingsViewModel)
     }
 }
 
@@ -62,17 +80,7 @@ class MainActivity : ComponentActivity() {
 data class TopLevelRoute<T : Any>(val name: String, val route: T, val icon: ImageVector)
 
 @Composable
-fun AppNavigation() {
-    val context = LocalContext.current
-    val settingsRepository = remember { SettingsRepository(context) }
-    val settingsViewModel: SettingsViewModel = viewModel(
-        factory = object : ViewModelProvider.Factory {
-            @Suppress("UNCHECKED_CAST")
-            override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                return SettingsViewModel(settingsRepository) as T
-            }
-        }
-    )
+fun AppNavigation(settingsViewModel: SettingsViewModel) {
     val navController = rememberNavController()
     val configuration = LocalConfiguration.current
     val haptic = LocalHapticFeedback.current
