@@ -153,7 +153,10 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel) {
                     strokeWidth = 2.dp
                 )
             } else {
-                Text("Save and Ping Server URL")
+                Text(
+                    if (selectedOption == ServerOption.Default) "Ping Server" 
+                    else "Ping Server URL and Save"
+                )
             }
         }
 

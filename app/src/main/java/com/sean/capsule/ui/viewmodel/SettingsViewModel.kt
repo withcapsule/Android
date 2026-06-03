@@ -71,6 +71,12 @@ class SettingsViewModel(private val repository: SettingsRepository) : ViewModel(
     fun updateServerOption(option: String) {
         _serverOption.value = option
         clearPingResponse()
+
+        if (option == ServerOption.Default.name) {
+            viewModelScope.launch {
+                repository.updateServerOption(option)
+            }
+        }
     }
 
     fun updateCustomUrl(url: String) {
@@ -85,11 +91,16 @@ class SettingsViewModel(private val repository: SettingsRepository) : ViewModel(
 
     fun saveAndPingServer() {
         viewModelScope.launch {
-            repository.updateServerOption(_serverOption.value)
-            repository.updateCustomUrl(_customUrl.value)
-            repository.updateCustomProtocolIndex(_customProtocolIndex.value)
+            val isDefault = _serverOption.value == ServerOption.Default.name
 
-            val url = if (_serverOption.value == ServerOption.Default.name) {
+
+            repository.updateServerOption(_serverOption.value)
+            if (!isDefault) {
+                repository.updateCustomUrl(_customUrl.value)
+                repository.updateCustomProtocolIndex(_customProtocolIndex.value)
+            }
+
+            val url = if (isDefault) {
                 ServerOption.Default.baseUrl!!
             } else {
                 "${protocols.getOrElse(_customProtocolIndex.value) { "https://" }}${_customUrl.value}"
