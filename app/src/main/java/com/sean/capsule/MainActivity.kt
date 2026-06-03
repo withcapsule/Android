@@ -102,7 +102,7 @@ fun AppNavigation() {
 
         Scaffold(
             modifier = Modifier.weight(1f),
-            contentWindowInsets = WindowInsets.safeDrawing,
+            contentWindowInsets = WindowInsets(0, 0, 0, 0),
             bottomBar = {
                 if (!isLandscape) {
                     NavigationBar {
@@ -132,7 +132,7 @@ fun AppNavigation() {
             NavHost(
                 navController = navController,
                 startDestination = Upload,
-                modifier = Modifier.padding(innerPadding),
+                modifier = Modifier.fillMaxSize(),
                 enterTransition = { fadeIn(animationSpec = tween(250)) },
                 exitTransition = { fadeOut(animationSpec = tween(250)) }
             ) {

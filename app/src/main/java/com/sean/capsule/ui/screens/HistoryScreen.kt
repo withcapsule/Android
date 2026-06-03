@@ -19,15 +19,15 @@ import androidx.compose.ui.unit.sp
 @Composable
 fun HistoryScreen() {
     Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Top))
+        modifier = Modifier.fillMaxSize()
     ) {
         Text(
             text = "Recent Activity",
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold,
-            modifier = Modifier.padding(16.dp)
+            modifier = Modifier
+                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top))
+                .padding(16.dp)
         )
         
         LazyColumn(
