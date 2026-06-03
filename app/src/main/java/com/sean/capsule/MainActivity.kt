@@ -18,7 +18,9 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavDestination.Companion.hierarchy
@@ -32,7 +34,9 @@ import com.sean.capsule.ui.screens.HistoryScreen
 import com.sean.capsule.ui.screens.SettingsScreen
 import com.sean.capsule.ui.screens.UploadScreen
 import com.sean.capsule.ui.theme.CapsuleTheme
+import com.sean.capsule.ui.viewmodel.SettingsViewModel
 import kotlinx.serialization.Serializable
+import androidx.lifecycle.viewmodel.compose.viewModel
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -54,10 +58,12 @@ class MainActivity : ComponentActivity() {
 data class TopLevelRoute<T : Any>(val name: String, val route: T, val icon: ImageVector)
 
 @Composable
-fun AppNavigation() {
+fun AppNavigation(settingsViewModel: SettingsViewModel = viewModel()) {
     val navController = rememberNavController()
     val configuration = LocalConfiguration.current
+    val haptic = LocalHapticFeedback.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+    val hapticsEnabled by settingsViewModel.hapticsEnabled.collectAsState()
     
     val routes = listOf(
         TopLevelRoute("Upload", Upload, Icons.Default.Upload),
@@ -83,6 +89,9 @@ fun AppNavigation() {
                         label = { Text(topLevelRoute.name) },
                         selected = currentDestination?.hierarchy?.any { it.hasRoute(topLevelRoute.route::class) } == true,
                         onClick = {
+                            if (hapticsEnabled) {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            }
                             navController.navigate(topLevelRoute.route) {
                                 popUpTo(navController.graph.findStartDestination().id) {
                                     saveState = true
@@ -115,6 +124,9 @@ fun AppNavigation() {
                                 label = { Text(topLevelRoute.name) },
                                 selected = currentDestination?.hierarchy?.any { it.hasRoute(topLevelRoute.route::class) } == true,
                                 onClick = {
+                                    if (hapticsEnabled) {
+                                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    }
                                     navController.navigate(topLevelRoute.route) {
                                         popUpTo(navController.graph.findStartDestination().id) {
                                             saveState = true
@@ -136,10 +148,10 @@ fun AppNavigation() {
                 enterTransition = { fadeIn(animationSpec = tween(250)) },
                 exitTransition = { fadeOut(animationSpec = tween(250)) }
             ) {
-                composable<Upload> { UploadScreen() }
-                composable<Download> { DownloadScreen() }
-                composable<History> { HistoryScreen() }
-                composable<Settings> { SettingsScreen() }
+                composable<Upload> { UploadScreen(settingsViewModel) }
+            composable<Download> { DownloadScreen() }
+            composable<History> { HistoryScreen() }
+            composable<Settings> { SettingsScreen(settingsViewModel) }
             }
         }
     }

@@ -9,14 +9,20 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 
+import com.sean.capsule.ui.viewmodel.SettingsViewModel
+
 @Composable
-fun UploadScreen() {
+fun UploadScreen(settingsViewModel: SettingsViewModel) {
     var isEncrypted by remember { mutableStateOf(false) }
     val scrollState = rememberScrollState()
+    val haptic = LocalHapticFeedback.current
+    val hapticsEnabled by settingsViewModel.hapticsEnabled.collectAsState()
 
     Column(
         modifier = Modifier
@@ -60,7 +66,16 @@ fun UploadScreen() {
             Spacer(modifier = Modifier.width(8.dp))
             Switch(
                 checked = isEncrypted,
-                onCheckedChange = { isEncrypted = it }
+                onCheckedChange = { 
+                    isEncrypted = it 
+                    if (hapticsEnabled) {
+                        if (it) {
+                            haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        } else {
+                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                        }
+                    }
+                }
             )
         }
     }
