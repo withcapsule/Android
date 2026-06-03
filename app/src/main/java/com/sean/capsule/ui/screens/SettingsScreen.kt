@@ -18,21 +18,27 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sean.capsule.ui.components.LargeDropdownMenu
 import com.sean.capsule.ui.viewmodel.SettingsViewModel
-
-enum class ServerOption(val displayName: String) {
-    Default("Default (https://send.withcapsule.dev)"),
-    Custom("Custom")
-}
+import com.sean.capsule.ui.viewmodel.ServerOption
 
 @Composable
 fun SettingsScreen(settingsViewModel: SettingsViewModel) {
-    var selectedOption by remember { mutableStateOf(ServerOption.Default) }
-    var customUrl by remember { mutableStateOf("") }
+    val serverOptionStr by settingsViewModel.serverOption.collectAsState()
+    val selectedOption = try {
+        ServerOption.valueOf(serverOptionStr)
+    } catch (e: Exception) {
+        ServerOption.Default
+    }
+    
+    val customUrl by settingsViewModel.customUrl.collectAsState()
+    val selectedProtocolIndex by settingsViewModel.customProtocolIndex.collectAsState()
+    
     val protocols = listOf("https://", "http://")
-    var selectedProtocolIndex by remember { mutableStateOf(0) }
     val scrollState = rememberScrollState()
     val hapticsEnabled by settingsViewModel.hapticsEnabled.collectAsState()
     val haptic = LocalHapticFeedback.current
+
+    val pingResponse by settingsViewModel.pingResponse.collectAsState()
+    val isPinging by settingsViewModel.isPinging.collectAsState()
 
     Column(
         modifier = Modifier
@@ -76,7 +82,9 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel) {
                         .height(56.dp)
                         .selectable(
                             selected = (option == selectedOption),
-                            onClick = { selectedOption = option },
+                            onClick = { 
+                                settingsViewModel.updateServerOption(option.name)
+                            },
                             role = Role.RadioButton
                         )
                         .padding(horizontal = 16.dp),
@@ -105,7 +113,9 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel) {
                     label = "Protocol",
                     items = protocols,
                     selectedIndex = selectedProtocolIndex,
-                    onItemSelected = { index, _ -> selectedProtocolIndex = index },
+                    onItemSelected = { index, _ -> 
+                        settingsViewModel.updateCustomProtocolIndex(index)
+                    },
                     modifier = Modifier.width(124.dp)
                 )
                 
@@ -113,11 +123,55 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel) {
                 
                 OutlinedTextField(
                     value = customUrl,
-                    onValueChange = { customUrl = it },
+                    onValueChange = { 
+                        settingsViewModel.updateCustomUrl(it)
+                    },
                     label = { Text("Custom Server URL") },
                     modifier = Modifier.weight(1f),
                     singleLine = true,
                     placeholder = { Text("your-server.com") }
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        Button(
+            onClick = {
+                settingsViewModel.saveAndPingServer()
+                if (hapticsEnabled) {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                }
+            },
+            modifier = Modifier.fillMaxWidth(),
+            enabled = !isPinging && (selectedOption == ServerOption.Default || customUrl.isNotBlank())
+        ) {
+            if (isPinging) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(24.dp),
+                    color = MaterialTheme.colorScheme.onPrimary,
+                    strokeWidth = 2.dp
+                )
+            } else {
+                Text("Save and Ping Server URL")
+            }
+        }
+
+        pingResponse?.let { response ->
+            Spacer(modifier = Modifier.height(16.dp))
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = if (response.lowercase().contains("error")) 
+                        MaterialTheme.colorScheme.errorContainer 
+                    else 
+                        MaterialTheme.colorScheme.secondaryContainer
+                ),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    text = response,
+                    modifier = Modifier.padding(16.dp),
+                    style = MaterialTheme.typography.bodyMedium
                 )
             }
         }
@@ -140,7 +194,6 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel) {
                         onClick = { 
                             val newState = !hapticsEnabled
                             settingsViewModel.setHapticsEnabled(newState)
-                            // We trigger feedback even when turning OFF so the user gets confirmation of the final action
                             if (newState) {
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                             } else {
@@ -159,7 +212,7 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel) {
                 )
                 Switch(
                     checked = hapticsEnabled,
-                    onCheckedChange = null // null because row is selectable
+                    onCheckedChange = null
                 )
             }
         }

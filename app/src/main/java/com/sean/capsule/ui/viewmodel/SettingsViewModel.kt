@@ -1,15 +1,133 @@
 package com.sean.capsule.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
+import androidx.lifecycle.viewModelScope
+import com.sean.capsule.data.local.SettingsRepository
+import com.sean.capsule.data.remote.ApiService
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
+import okhttp3.OkHttpClient
+import okhttp3.logging.HttpLoggingInterceptor
+import retrofit2.Retrofit
+import retrofit2.converter.scalars.ScalarsConverterFactory
 
-class SettingsViewModel : ViewModel() {
-    private val _hapticsEnabled = MutableStateFlow(true)
-    val hapticsEnabled: StateFlow<Boolean> = _hapticsEnabled.asStateFlow()
+enum class ServerOption(val displayName: String, val baseUrl: String?) {
+    Default("Default (https://send.withcapsule.dev)", "https://send.withcapsule.dev"),
+    Custom("Custom", null)
+}
+
+class SettingsViewModel(private val repository: SettingsRepository) : ViewModel() {
+    val hapticsEnabled: StateFlow<Boolean> = repository.hapticsEnabled
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
+    private val _serverOption = MutableStateFlow("Default")
+    val serverOption: StateFlow<String> = _serverOption.asStateFlow()
+
+    private val _customUrl = MutableStateFlow("")
+    val customUrl: StateFlow<String> = _customUrl.asStateFlow()
+
+    private val _customProtocolIndex = MutableStateFlow(0)
+    val customProtocolIndex: StateFlow<Int> = _customProtocolIndex.asStateFlow()
+
+    private val protocols = listOf("https://", "http://")
+
+    val effectiveBaseUrl: StateFlow<String> = kotlinx.coroutines.flow.combine(
+        repository.serverOption,
+        repository.customUrl,
+        repository.customProtocolIndex
+    ) { option, url, protocolIndex ->
+        if (option == ServerOption.Default.name) {
+            ServerOption.Default.baseUrl!!
+        } else {
+            "${protocols.getOrElse(protocolIndex) { "https://" }}$url"
+        }
+    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ServerOption.Default.baseUrl!!)
+
+    private val _pingResponse = MutableStateFlow<String?>(null)
+    val pingResponse: StateFlow<String?> = _pingResponse.asStateFlow()
+
+    private val _isPinging = MutableStateFlow(false)
+    val isPinging: StateFlow<Boolean> = _isPinging.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            _serverOption.value = repository.serverOption.first()
+            _customUrl.value = repository.customUrl.first()
+            _customProtocolIndex.value = repository.customProtocolIndex.first()
+        }
+    }
 
     fun setHapticsEnabled(enabled: Boolean) {
-        _hapticsEnabled.value = enabled
+        viewModelScope.launch {
+            repository.updateHapticsEnabled(enabled)
+        }
+    }
+
+    fun updateServerOption(option: String) {
+        _serverOption.value = option
+        clearPingResponse()
+    }
+
+    fun updateCustomUrl(url: String) {
+        _customUrl.value = url
+        clearPingResponse()
+    }
+
+    fun updateCustomProtocolIndex(index: Int) {
+        _customProtocolIndex.value = index
+        clearPingResponse()
+    }
+
+    fun saveAndPingServer() {
+        viewModelScope.launch {
+            repository.updateServerOption(_serverOption.value)
+            repository.updateCustomUrl(_customUrl.value)
+            repository.updateCustomProtocolIndex(_customProtocolIndex.value)
+
+            val url = if (_serverOption.value == ServerOption.Default.name) {
+                ServerOption.Default.baseUrl!!
+            } else {
+                "${protocols.getOrElse(_customProtocolIndex.value) { "https://" }}${_customUrl.value}"
+            }
+            pingServer(url)
+        }
+    }
+
+    private fun pingServer(baseUrl: String) {
+        viewModelScope.launch {
+            _isPinging.value = true
+            _pingResponse.value = null
+            
+            try {
+                val okHttpClient = OkHttpClient.Builder()
+                    .addInterceptor(HttpLoggingInterceptor().apply {
+                        level = HttpLoggingInterceptor.Level.BODY
+                    })
+                    .build()
+
+                val retrofit = Retrofit.Builder()
+                    .baseUrl(baseUrl.let { if (it.endsWith("/")) it else "$it/" })
+                    .client(okHttpClient)
+                    .addConverterFactory(ScalarsConverterFactory.create())
+                    .build()
+
+                val apiService = retrofit.create(ApiService::class.java)
+                val response = apiService.ping()
+                _pingResponse.value = response
+            } catch (e: Exception) {
+                _pingResponse.value = "Error: ${e.message}"
+            } finally {
+                _isPinging.value = false
+            }
+        }
+    }
+    
+    fun clearPingResponse() {
+        _pingResponse.value = null
     }
 }

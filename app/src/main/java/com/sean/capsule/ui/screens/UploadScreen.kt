@@ -62,7 +62,7 @@ fun UploadScreen(settingsViewModel: SettingsViewModel) {
         Row(
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Text("Encrypt transfer")
+            Text("Encrypt file")
             Spacer(modifier = Modifier.width(8.dp))
             Switch(
                 checked = isEncrypted,

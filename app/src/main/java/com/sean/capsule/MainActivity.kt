@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 import androidx.navigation.NavDestination.Companion.hasRoute
@@ -29,6 +30,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.sean.capsule.data.local.SettingsRepository
 import com.sean.capsule.ui.screens.DownloadScreen
 import com.sean.capsule.ui.screens.HistoryScreen
 import com.sean.capsule.ui.screens.SettingsScreen
@@ -36,6 +38,8 @@ import com.sean.capsule.ui.screens.UploadScreen
 import com.sean.capsule.ui.theme.CapsuleTheme
 import com.sean.capsule.ui.viewmodel.SettingsViewModel
 import kotlinx.serialization.Serializable
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 
 class MainActivity : ComponentActivity() {
@@ -58,7 +62,17 @@ class MainActivity : ComponentActivity() {
 data class TopLevelRoute<T : Any>(val name: String, val route: T, val icon: ImageVector)
 
 @Composable
-fun AppNavigation(settingsViewModel: SettingsViewModel = viewModel()) {
+fun AppNavigation() {
+    val context = LocalContext.current
+    val settingsRepository = remember { SettingsRepository(context) }
+    val settingsViewModel: SettingsViewModel = viewModel(
+        factory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                return SettingsViewModel(settingsRepository) as T
+            }
+        }
+    )
     val navController = rememberNavController()
     val configuration = LocalConfiguration.current
     val haptic = LocalHapticFeedback.current
@@ -140,7 +154,7 @@ fun AppNavigation(settingsViewModel: SettingsViewModel = viewModel()) {
                     }
                 }
             }
-        ) { innerPadding ->
+        ) { _ ->
             NavHost(
                 navController = navController,
                 startDestination = Upload,
@@ -161,6 +175,6 @@ fun AppNavigation(settingsViewModel: SettingsViewModel = viewModel()) {
 @Composable
 fun AppNavigationPreview() {
     CapsuleTheme {
-        AppNavigation()
+        Text("App Navigation Preview")
     }
 }
