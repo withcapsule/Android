@@ -1,5 +1,7 @@
 package com.sean.capsule.ui.screens
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.Arrangement
@@ -7,6 +9,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.CameraAlt
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.RocketLaunch
 import androidx.compose.material.icons.filled.Storage
@@ -14,11 +17,15 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
+import android.Manifest
+import android.content.pm.PackageManager
 import com.sean.capsule.ui.components.LargeDropdownMenu
 import com.sean.capsule.ui.viewmodel.SettingsViewModel
 import com.sean.capsule.ui.viewmodel.ServerOption
@@ -50,8 +57,72 @@ fun OnboardingScreen(settingsViewModel: SettingsViewModel) {
                     settingsViewModel = settingsViewModel,
                     onNext = { currentPage = 2 }
                 )
-                2 -> CompletionPage(onFinish = { settingsViewModel.setOnboardingCompleted(true) })
+                2 -> CameraPermissionPage(onNext = { currentPage = 3 })
+                3 -> CompletionPage(onFinish = { settingsViewModel.setOnboardingCompleted(true) })
             }
+        }
+    }
+}
+
+@Composable
+fun CameraPermissionPage(onNext: () -> Unit) {
+    val context = LocalContext.current
+    val launcher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+        onResult = { _ -> onNext() }
+    )
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(32.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center
+    ) {
+        Icon(
+            imageVector = Icons.Default.CameraAlt,
+            contentDescription = null,
+            modifier = Modifier.size(120.dp),
+            tint = MaterialTheme.colorScheme.primary
+        )
+        Spacer(modifier = Modifier.height(32.dp))
+        Text(
+            text = "Camera Access",
+            fontSize = 32.sp,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(16.dp))
+        Text(
+            text = "Capsule can use your camera to scan QR codes for quick downloads. This is completely optional.",
+            fontSize = 18.sp,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            textAlign = TextAlign.Center
+        )
+        Spacer(modifier = Modifier.height(64.dp))
+        Button(
+            onClick = {
+                val hasPermission = ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.CAMERA
+                ) == PackageManager.PERMISSION_GRANTED
+                
+                if (hasPermission) {
+                    onNext()
+                } else {
+                    launcher.launch(Manifest.permission.CAMERA)
+                }
+            },
+            modifier = Modifier.fillMaxWidth().height(56.dp)
+        ) {
+            Text("Grant Permission", fontSize = 18.sp)
+        }
+        Spacer(modifier = Modifier.height(12.dp))
+        TextButton(
+            onClick = onNext,
+            modifier = Modifier.fillMaxWidth().height(56.dp)
+        ) {
+            Text("Maybe Later", fontSize = 18.sp)
         }
     }
 }
