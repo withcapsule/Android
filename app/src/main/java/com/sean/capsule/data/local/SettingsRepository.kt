@@ -17,11 +17,17 @@ class SettingsRepository(private val context: Context) {
         val CUSTOM_URL = stringPreferencesKey("custom_url")
         val CUSTOM_PROTOCOL_INDEX = intPreferencesKey("custom_protocol_index")
         val ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
+        val DOWNLOAD_DIR_URI = stringPreferencesKey("download_dir_uri")
     }
 
     val onboardingCompleted: Flow<Boolean> = context.dataStore.data
         .map { preferences ->
             preferences[PreferencesKeys.ONBOARDING_COMPLETED] ?: false
+        }
+
+    val downloadDirUri: Flow<String?> = context.dataStore.data
+        .map { preferences ->
+            preferences[PreferencesKeys.DOWNLOAD_DIR_URI]
         }
 
     val hapticsEnabled: Flow<Boolean> = context.dataStore.data
@@ -71,6 +77,16 @@ class SettingsRepository(private val context: Context) {
     suspend fun updateOnboardingCompleted(completed: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.ONBOARDING_COMPLETED] = completed
+        }
+    }
+
+    suspend fun updateDownloadDirUri(uri: String?) {
+        context.dataStore.edit { preferences ->
+            if (uri == null) {
+                preferences.remove(PreferencesKeys.DOWNLOAD_DIR_URI)
+            } else {
+                preferences[PreferencesKeys.DOWNLOAD_DIR_URI] = uri
+            }
         }
     }
 }

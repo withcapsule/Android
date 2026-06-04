@@ -5,9 +5,8 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Download
@@ -33,6 +32,7 @@ import androidx.navigation.compose.rememberNavController
 import com.sean.capsule.data.local.SettingsRepository
 import com.sean.capsule.ui.screens.*
 import com.sean.capsule.ui.theme.CapsuleTheme
+import com.sean.capsule.ui.viewmodel.DownloadViewModel
 import com.sean.capsule.ui.viewmodel.SettingsViewModel
 import kotlinx.serialization.Serializable
 import androidx.lifecycle.ViewModel
@@ -55,6 +55,7 @@ class MainActivity : ComponentActivity() {
 fun MainContent() {
     val context = LocalContext.current
     val settingsRepository = remember { SettingsRepository(context) }
+    
     val settingsViewModel: SettingsViewModel = viewModel(
         factory = object : ViewModelProvider.Factory {
             @Suppress("UNCHECKED_CAST")
@@ -63,10 +64,13 @@ fun MainContent() {
             }
         }
     )
+    
+    val downloadViewModel: DownloadViewModel = viewModel()
+    
     val onboardingCompleted by settingsViewModel.onboardingCompleted.collectAsState()
 
     if (onboardingCompleted) {
-        AppNavigation(settingsViewModel)
+        AppNavigation(settingsViewModel, downloadViewModel)
     } else {
         OnboardingScreen(settingsViewModel)
     }
@@ -76,16 +80,21 @@ fun MainContent() {
 @Serializable object Download
 @Serializable object History
 @Serializable object Settings
+@Serializable data class QRScanner(val target: String)
 
 data class TopLevelRoute<T : Any>(val name: String, val route: T, val icon: ImageVector)
 
 @Composable
-fun AppNavigation(settingsViewModel: SettingsViewModel) {
+fun AppNavigation(settingsViewModel: SettingsViewModel, downloadViewModel: DownloadViewModel) {
     val navController = rememberNavController()
     val configuration = LocalConfiguration.current
     val haptic = LocalHapticFeedback.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
     val hapticsEnabled by settingsViewModel.hapticsEnabled.collectAsState()
+
+    val navBackStackEntry by navController.currentBackStackEntryAsState()
+    val currentDestination = navBackStackEntry?.destination
+    val isScannerVisible = currentDestination?.hasRoute(QRScanner::class) == true
     
     val routes = listOf(
         TopLevelRoute("Upload", Upload, Icons.Default.Upload),
@@ -95,15 +104,12 @@ fun AppNavigation(settingsViewModel: SettingsViewModel) {
     )
 
     Row(modifier = Modifier.fillMaxSize()) {
-        if (isLandscape) {
+        if (isLandscape && !isScannerVisible) {
             NavigationRail(
                 modifier = Modifier.fillMaxHeight(),
                 containerColor = MaterialTheme.colorScheme.surfaceContainer,
                 windowInsets = WindowInsets.safeDrawing.only(WindowInsetsSides.Vertical + WindowInsetsSides.Start)
             ) {
-                val navBackStackEntry by navController.currentBackStackEntryAsState()
-                val currentDestination = navBackStackEntry?.destination
-                
                 Spacer(Modifier.weight(1f))
                 routes.forEachIndexed { index, topLevelRoute ->
                     NavigationRailItem(
@@ -135,11 +141,8 @@ fun AppNavigation(settingsViewModel: SettingsViewModel) {
             modifier = Modifier.weight(1f),
             contentWindowInsets = WindowInsets(0, 0, 0, 0),
             bottomBar = {
-                if (!isLandscape) {
+                if (!isLandscape && !isScannerVisible) {
                     NavigationBar {
-                        val navBackStackEntry by navController.currentBackStackEntryAsState()
-                        val currentDestination = navBackStackEntry?.destination
-                        
                         routes.forEach { topLevelRoute ->
                             NavigationBarItem(
                                 icon = { Icon(topLevelRoute.icon, contentDescription = topLevelRoute.name) },
@@ -171,9 +174,32 @@ fun AppNavigation(settingsViewModel: SettingsViewModel) {
                 exitTransition = { fadeOut(animationSpec = tween(250)) }
             ) {
                 composable<Upload> { UploadScreen(settingsViewModel) }
-            composable<Download> { DownloadScreen() }
-            composable<History> { HistoryScreen() }
-            composable<Settings> { SettingsScreen(settingsViewModel) }
+                composable<Download> { DownloadScreen(navController, settingsViewModel, downloadViewModel) }
+                composable<History> { HistoryScreen() }
+                composable<Settings> { SettingsScreen(settingsViewModel) }
+                composable<QRScanner>(
+                    enterTransition = {
+                        slideInVertically(initialOffsetY = { it }, animationSpec = tween(300)) + fadeIn()
+                    },
+                    exitTransition = {
+                        slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300)) + fadeOut()
+                    }
+                ) { backStackEntry ->
+                    val route: QRScanner = backStackEntry.arguments?.let { 
+                        QRScanner(target = backStackEntry.arguments?.getString("target") ?: "ID_URL")
+                    } ?: QRScanner("ID_URL")
+                    
+                    QRScannerScreen(
+                        target = ScannerTarget.valueOf(route.target),
+                        onResult = { result ->
+                            navController.previousBackStackEntry
+                                ?.savedStateHandle
+                                ?.set("scan_result", result)
+                            navController.popBackStack()
+                        },
+                        onClose = { navController.popBackStack() }
+                    )
+                }
             }
         }
     }

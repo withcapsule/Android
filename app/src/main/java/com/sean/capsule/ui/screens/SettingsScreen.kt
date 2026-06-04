@@ -1,27 +1,35 @@
 package com.sean.capsule.ui.screens
 
+import android.content.Intent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.net.toUri
 import com.sean.capsule.ui.components.LargeDropdownMenu
 import com.sean.capsule.ui.viewmodel.SettingsViewModel
 import com.sean.capsule.ui.viewmodel.ServerOption
 
 @Composable
 fun SettingsScreen(settingsViewModel: SettingsViewModel) {
+    val context = LocalContext.current
     val serverOptionStr by settingsViewModel.serverOption.collectAsState()
     val selectedOption = try {
         ServerOption.valueOf(serverOptionStr)
@@ -31,6 +39,7 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel) {
     
     val customUrl by settingsViewModel.customUrl.collectAsState()
     val selectedProtocolIndex by settingsViewModel.customProtocolIndex.collectAsState()
+    val downloadDirUri by settingsViewModel.downloadDirUri.collectAsState()
     
     val protocols = listOf("https://", "http://")
     val scrollState = rememberScrollState()
@@ -39,6 +48,19 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel) {
 
     val pingResponse by settingsViewModel.pingResponse.collectAsState()
     val isPinging by settingsViewModel.isPinging.collectAsState()
+
+    val folderLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocumentTree(),
+        onResult = { uri ->
+            uri?.let {
+                context.contentResolver.takePersistableUriPermission(
+                    it,
+                    Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_GRANT_WRITE_URI_PERMISSION
+                )
+                settingsViewModel.setDownloadDirUri(it.toString())
+            }
+        }
+    )
 
     Column(
         modifier = Modifier
@@ -179,6 +201,42 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel) {
             }
         }
         
+        Spacer(modifier = Modifier.height(32.dp))
+
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Text(
+                text = "Download Settings",
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            ListItem(
+                headlineContent = { Text("Download Directory") },
+                supportingContent = { 
+                    Text(
+                        if (downloadDirUri == null) "Default (Downloads/Capsules)"
+                        else downloadDirUri?.toUri()?.path?.split("/")?.lastOrNull() ?: "Custom"
+                    )
+                },
+                leadingContent = { Icon(Icons.Default.Folder, contentDescription = null) },
+                trailingContent = {
+                    TextButton(onClick = { folderLauncher.launch(null) }) {
+                        Text("Change")
+                    }
+                },
+                modifier = Modifier.clickable { folderLauncher.launch(null) }
+            )
+            
+            if (downloadDirUri != null) {
+                TextButton(
+                    onClick = { settingsViewModel.setDownloadDirUri(null) },
+                    modifier = Modifier.padding(start = 16.dp)
+                ) {
+                    Text("Reset to Default")
+                }
+            }
+        }
+
         Spacer(modifier = Modifier.height(32.dp))
 
         Column(modifier = Modifier.fillMaxWidth()) {

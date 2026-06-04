@@ -28,6 +28,9 @@ class SettingsViewModel(private val repository: SettingsRepository) : ViewModel(
     val hapticsEnabled: StateFlow<Boolean> = repository.hapticsEnabled
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
 
+    val downloadDirUri: StateFlow<String?> = repository.downloadDirUri
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
     private val _serverOption = MutableStateFlow("Default")
     val serverOption: StateFlow<String> = _serverOption.asStateFlow()
 
@@ -74,6 +77,12 @@ class SettingsViewModel(private val repository: SettingsRepository) : ViewModel(
     fun setOnboardingCompleted(completed: Boolean) {
         viewModelScope.launch {
             repository.updateOnboardingCompleted(completed)
+        }
+    }
+
+    fun setDownloadDirUri(uri: String?) {
+        viewModelScope.launch {
+            repository.updateDownloadDirUri(uri)
         }
     }
 
