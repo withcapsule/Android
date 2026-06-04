@@ -69,7 +69,7 @@ fun SettingsScreen(paddingValues: PaddingValues, settingsViewModel: SettingsView
             .fillMaxSize()
             .verticalScroll(scrollState)
             .padding(paddingValues)
-            .padding(16.dp),
+            .padding( 16.dp, 64.dp, 16.dp, 64.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Top
     ) {

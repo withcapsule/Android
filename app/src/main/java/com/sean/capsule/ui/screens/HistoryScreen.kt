@@ -56,7 +56,7 @@ fun HistoryScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewM
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(paddingValues)
-            .padding(16.dp),
+            .padding( 16.dp, 64.dp, 16.dp, 64.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Spacer(modifier = Modifier.height(48.dp))
