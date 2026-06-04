@@ -193,6 +193,12 @@ class SettingsViewModel(private val repository: SettingsRepository) : ViewModel(
         }
     }
 
+    fun removeHistoryItem(fileId: String) {
+        viewModelScope.launch {
+            repository.removeHistoryEntry(fileId)
+        }
+    }
+
     fun deleteFileFromServer(fileId: String, onSuccess: () -> Unit, onError: (String) -> Unit) {
         viewModelScope.launch {
             try {

@@ -64,7 +64,7 @@ fun HistoryScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewM
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
                 .padding(paddingValues)
-                .padding(16.dp),
+                .padding(16.dp, 64.dp, 16.dp, 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             Spacer(modifier = Modifier.height(48.dp))
@@ -100,7 +100,7 @@ fun HistoryScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewM
                     history.forEach { entry ->
                         val swipeToDismissState = rememberSwipeToDismissBoxState(
                             confirmValueChange = { value ->
-                                if (entry.isUpload && (value == SwipeToDismissBoxValue.StartToEnd || value == SwipeToDismissBoxValue.EndToStart)) {
+                                if (value == SwipeToDismissBoxValue.StartToEnd || value == SwipeToDismissBoxValue.EndToStart) {
                                     itemToDelete = entry
                                     false
                                 } else {
@@ -130,8 +130,8 @@ fun HistoryScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewM
                                     )
                                 }
                             },
-                            enableDismissFromStartToEnd = entry.isUpload,
-                            enableDismissFromEndToStart = entry.isUpload
+                            enableDismissFromStartToEnd = true,
+                            enableDismissFromEndToStart = true
                         ) {
                             HistoryItem(
                                 entry = entry,
@@ -215,35 +215,59 @@ fun HistoryScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewM
     itemToDelete?.let { entry ->
         AlertDialog(
             onDismissRequest = { itemToDelete = null },
-            title = { Text("Confirm Deletion") },
-            text = { Text("Are you sure you want to delete ${entry.fileName} from the server? This action cannot be undone.") },
+            title = { Text("Delete Entry") },
+            text = { Text("What would you like to do with ${entry.fileName}?") },
             confirmButton = {
-                Button(
-                    onClick = {
-                        val id = entry.id
-                        settingsViewModel.deleteFileFromServer(
-                            fileId = id,
-                            onSuccess = {
-                                coroutineScope.launch {
-                                    snackbarHostState.showSnackbar("File deleted successfully")
-                                }
-                            },
-                            onError = { error ->
-                                coroutineScope.launch {
-                                    snackbarHostState.showSnackbar("Error: $error")
-                                }
-                            }
-                        )
-                        itemToDelete = null
-                    },
-                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    Text("Delete")
-                }
-            },
-            dismissButton = {
-                TextButton(onClick = { itemToDelete = null }) {
-                    Text("Cancel")
+                    if (entry.isUpload) {
+                        Button(
+                            onClick = {
+                                val id = entry.id
+                                settingsViewModel.deleteFileFromServer(
+                                    fileId = id,
+                                    onSuccess = {
+                                        coroutineScope.launch {
+                                            snackbarHostState.showSnackbar("File deleted from server and recents")
+                                        }
+                                    },
+                                    onError = { error ->
+                                        coroutineScope.launch {
+                                            snackbarHostState.showSnackbar("Error: $error")
+                                        }
+                                    }
+                                )
+                                itemToDelete = null
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                        ) {
+                            Text("Delete from server")
+                        }
+                    }
+
+                    Button(
+                        onClick = {
+                            settingsViewModel.removeHistoryItem(entry.id)
+                            coroutineScope.launch {
+                                snackbarHostState.showSnackbar("Removed from recents")
+                            }
+                            itemToDelete = null
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
+                    ) {
+                        Text("Delete from recents")
+                    }
+
+                    TextButton(
+                        onClick = { itemToDelete = null },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text("Cancel")
+                    }
                 }
             }
         )
