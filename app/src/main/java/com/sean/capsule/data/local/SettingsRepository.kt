@@ -145,4 +145,18 @@ class SettingsRepository(private val context: Context) {
             preferences.remove(PreferencesKeys.HISTORY_JSON)
         }
     }
+
+    suspend fun removeHistoryEntry(id: String) {
+        context.dataStore.edit { preferences ->
+            val currentJson = preferences[PreferencesKeys.HISTORY_JSON] ?: "[]"
+            val currentList = try {
+                Json.decodeFromString<List<HistoryEntry>>(currentJson)
+            } catch (e: Exception) {
+                emptyList()
+            }
+            
+            val newList = currentList.filter { it.id != id }
+            preferences[PreferencesKeys.HISTORY_JSON] = Json.encodeToString(newList)
+        }
+    }
 }

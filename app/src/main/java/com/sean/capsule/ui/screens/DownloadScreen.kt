@@ -23,6 +23,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Download
@@ -34,8 +36,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -73,6 +77,7 @@ fun DownloadScreen(
     val baseUrl by settingsViewModel.effectiveBaseUrl.collectAsState()
     val downloadDirUri by settingsViewModel.downloadDirUri.collectAsState()
     val downloadState by downloadViewModel.downloadState.collectAsState()
+    val focusManager = LocalFocusManager.current
 
     val navBackStackEntry = navController.currentBackStackEntry
 
@@ -199,6 +204,13 @@ fun DownloadScreen(
                             label = { Text("Mnemonic Phrase") },
                             modifier = Modifier.fillMaxWidth(),
                             minLines = 2,
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+                            keyboardActions = KeyboardActions(
+                                onDone = {
+                                    mnemonic = mnemonic.lowercase().trim().replace("\\s+".toRegex(), " ")
+                                    focusManager.clearFocus()
+                                }
+                            ),
                             trailingIcon = {
                                 IconButton(onClick = {
                                     pendingTargetName = ScannerTarget.MNEMONIC.name

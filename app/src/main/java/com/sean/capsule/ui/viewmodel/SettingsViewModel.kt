@@ -192,4 +192,34 @@ class SettingsViewModel(private val repository: SettingsRepository) : ViewModel(
             repository.clearHistory()
         }
     }
+
+    fun deleteFileFromServer(fileId: String, onSuccess: () -> Unit, onError: (String) -> Unit) {
+        viewModelScope.launch {
+            try {
+                val okHttpClient = OkHttpClient.Builder()
+                    .addInterceptor(HttpLoggingInterceptor().apply {
+                        level = HttpLoggingInterceptor.Level.HEADERS
+                    })
+                    .build()
+
+                val retrofit = Retrofit.Builder()
+                    .baseUrl(effectiveBaseUrl.value.let { if (it.endsWith("/")) it else "$it/" })
+                    .client(okHttpClient)
+                    .build()
+
+                val apiService = retrofit.create(ApiService::class.java)
+                val response = apiService.deleteFile(fileId)
+
+                if (response.isSuccessful) {
+                    repository.removeHistoryEntry(fileId)
+                    onSuccess()
+                } else {
+                    val error = response.errorBody()?.string() ?: "Server error ${response.code()}"
+                    onError(error)
+                }
+            } catch (e: Exception) {
+                onError(e.message ?: "Unknown error")
+            }
+        }
+    }
 }

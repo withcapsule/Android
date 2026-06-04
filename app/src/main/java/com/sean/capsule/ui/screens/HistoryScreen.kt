@@ -1,10 +1,9 @@
 package com.sean.capsule.ui.screens
 
 import androidx.compose.animation.*
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -13,6 +12,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
@@ -38,107 +38,158 @@ import java.util.Locale
 import kotlin.math.log10
 import kotlin.math.pow
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistoryScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewModel) {
     val history by settingsViewModel.history.collectAsState()
     val baseUrl by settingsViewModel.effectiveBaseUrl.collectAsState()
     val coroutineScope = rememberCoroutineScope()
     val hapticsEnabled by settingsViewModel.hapticsEnabled.collectAsState()
+    val snackbarHostState = remember { SnackbarHostState() }
     
-    var showDialog by remember { mutableStateOf(false) }
+    var showStatusDialog by remember { mutableStateOf(false) }
     var selectedStatusJson by remember { mutableStateOf<JSONObject?>(null) }
     var selectedId by remember { mutableStateOf("") }
     var isLoadingStatus by remember { mutableStateOf(false) }
     var statusError by remember { mutableStateOf<String?>(null) }
 
-    var clearHistoryButtonEnabled by remember { mutableStateOf( !history.isEmpty() ) }
+    var itemToDelete by remember { mutableStateOf<HistoryEntry?>(null) }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .verticalScroll(rememberScrollState())
-            .padding(paddingValues)
-            .padding(16.dp, 64.dp, 16.dp, 64.dp),
-        horizontalAlignment = Alignment.CenterHorizontally
-    ) {
-        Spacer(modifier = Modifier.height(48.dp))
+    Scaffold(
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        containerColor = Color.Transparent
+    ) { _ ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .verticalScroll(rememberScrollState())
+                .padding(paddingValues)
+                .padding(16.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Spacer(modifier = Modifier.height(48.dp))
 
-        Icon(
-            imageVector = Icons.Default.History,
-            contentDescription = "History",
-            modifier = Modifier.size(80.dp),
-            tint = MaterialTheme.colorScheme.primary
-        )
+            Icon(
+                imageVector = Icons.Default.History,
+                contentDescription = "History",
+                modifier = Modifier.size(80.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
 
-        Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
-        Text(
-            text = "Recent Activity",
-            fontSize = 24.sp,
-            fontWeight = FontWeight.Bold
-        )
+            Text(
+                text = "Recent Activity",
+                fontSize = 24.sp,
+                fontWeight = FontWeight.Bold
+            )
 
-        Spacer(modifier = Modifier.height(32.dp))
-        
-        if (history.isEmpty()) {
-            Box(modifier = Modifier
-                .fillMaxWidth()
-                .padding(top = 32.dp), contentAlignment = Alignment.Center) {
-                Text("No recent activity", color = MaterialTheme.colorScheme.outline)
-            }
-        } else {
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                history.forEach { entry ->
-                    HistoryItem(
-                        entry = entry,
-                        onInfoClick = {
-                            selectedId = entry.id
-                            showDialog = true
-                            isLoadingStatus = true
-                            statusError = null
-                            selectedStatusJson = null
-                            
-                            coroutineScope.launch {
-                                try {
-                                    val apiService = createTempApiService(baseUrl)
-                                    val response = apiService.getFileStatus(entry.id)
-                                    if (response.isSuccessful) {
-                                        val body = response.body()?.string()
-                                        if (body != null) {
-                                            selectedStatusJson = JSONObject(body)
-                                        } else {
-                                            statusError = "Empty response from server"
-                                        }
-                                    } else {
-                                        statusError = "Server returned ${response.code()}"
-                                    }
-                                } catch (e: Exception) {
-                                    statusError = e.message ?: "Unknown error"
-                                } finally {
-                                    isLoadingStatus = false
+            Spacer(modifier = Modifier.height(32.dp))
+            
+            if (history.isEmpty()) {
+                Box(modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 32.dp), contentAlignment = Alignment.Center) {
+                    Text("No recent activity", color = MaterialTheme.colorScheme.outline)
+                }
+            } else {
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    history.forEach { entry ->
+                        val swipeToDismissState = rememberSwipeToDismissBoxState(
+                            confirmValueChange = { value ->
+                                if (entry.isUpload && (value == SwipeToDismissBoxValue.StartToEnd || value == SwipeToDismissBoxValue.EndToStart)) {
+                                    itemToDelete = entry
+                                    false
+                                } else {
+                                    false
                                 }
                             }
+                        )
+
+                        SwipeToDismissBox(
+                            state = swipeToDismissState,
+                            backgroundContent = {
+                                val color = MaterialTheme.colorScheme.errorContainer
+                                val alignment = if (swipeToDismissState.dismissDirection == SwipeToDismissBoxValue.StartToEnd) Alignment.CenterStart else Alignment.CenterEnd
+                                val icon = Icons.Default.Delete
+
+                                Box(
+                                    Modifier
+                                        .fillMaxSize()
+                                        .background(color, shape = MaterialTheme.shapes.medium)
+                                        .padding(horizontal = 20.dp),
+                                    contentAlignment = alignment
+                                ) {
+                                    Icon(
+                                        icon,
+                                        contentDescription = "Delete",
+                                        tint = MaterialTheme.colorScheme.error
+                                    )
+                                }
+                            },
+                            enableDismissFromStartToEnd = entry.isUpload,
+                            enableDismissFromEndToStart = entry.isUpload
+                        ) {
+                            HistoryItem(
+                                entry = entry,
+                                onInfoClick = {
+                                    selectedId = entry.id
+                                    showStatusDialog = true
+                                    isLoadingStatus = true
+                                    statusError = null
+                                    selectedStatusJson = null
+                                    
+                                    coroutineScope.launch {
+                                        try {
+                                            val apiService = createTempApiService(baseUrl)
+                                            val response = apiService.getFileStatus(entry.id)
+                                            if (response.isSuccessful) {
+                                                val body = response.body()?.string()
+                                                if (body != null) {
+                                                    selectedStatusJson = JSONObject(body)
+                                                } else {
+                                                    statusError = "Empty response from server"
+                                                }
+                                            } else {
+                                                val code = response.code();
+                                                statusError = if ( code == 404 ) {
+                                                    "File not found on server. Either it expired or it was deleted. (Error code 404)"
+                                                } else {
+                                                    "Server returned $code"
+                                                }
+
+                                            }
+                                        } catch (e: Exception) {
+                                            statusError = e.message ?: "Unknown error"
+                                        } finally {
+                                            isLoadingStatus = false
+                                        }
+                                    }
+                                }
+                            )
                         }
-                    )
+                    }
                 }
             }
-        }
 
-        Button(
-            modifier = Modifier.padding( 16.dp ),
-            enabled = clearHistoryButtonEnabled,
-            onClick = { settingsViewModel.clearHistory(); clearHistoryButtonEnabled = false }
-        ) {
-            Text( "Clear history" )
+            Spacer(modifier = Modifier.height(32.dp))
+
+            Button(
+                modifier = Modifier.padding( 16.dp ),
+                enabled = history.isNotEmpty(),
+                onClick = { settingsViewModel.clearHistory() }
+            ) {
+                Text( "Clear history" )
+            }
         }
     }
 
-    if (showDialog) {
+    if (showStatusDialog) {
         AlertDialog(
-            onDismissRequest = { showDialog = false },
+            onDismissRequest = { showStatusDialog = false },
             title = { Text("File Status") },
             text = {
                 Box(modifier = Modifier
@@ -154,8 +205,45 @@ fun HistoryScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewM
                 }
             },
             confirmButton = {
-                TextButton(onClick = { showDialog = false }) {
+                TextButton(onClick = { showStatusDialog = false }) {
                     Text("Close")
+                }
+            }
+        )
+    }
+
+    itemToDelete?.let { entry ->
+        AlertDialog(
+            onDismissRequest = { itemToDelete = null },
+            title = { Text("Confirm Deletion") },
+            text = { Text("Are you sure you want to delete ${entry.fileName} from the server? This action cannot be undone.") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val id = entry.id
+                        settingsViewModel.deleteFileFromServer(
+                            fileId = id,
+                            onSuccess = {
+                                coroutineScope.launch {
+                                    snackbarHostState.showSnackbar("File deleted successfully")
+                                }
+                            },
+                            onError = { error ->
+                                coroutineScope.launch {
+                                    snackbarHostState.showSnackbar("Error: $error")
+                                }
+                            }
+                        )
+                        itemToDelete = null
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) {
+                    Text("Delete")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { itemToDelete = null }) {
+                    Text("Cancel")
                 }
             }
         )
