@@ -1,71 +1,208 @@
 package com.sean.capsule.ui.screens
 
+import androidx.compose.animation.*
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.FileDownload
-import androidx.compose.material.icons.filled.FileUpload
-import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.sean.capsule.data.local.HistoryEntry
+import com.sean.capsule.data.remote.ApiService
+import com.sean.capsule.ui.viewmodel.SettingsViewModel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import okhttp3.OkHttpClient
+import okhttp3.logging.HttpLoggingInterceptor
+import org.json.JSONObject
+import retrofit2.Retrofit
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import kotlin.math.log10
+import kotlin.math.pow
 
 @Composable
-fun HistoryScreen() {
+fun HistoryScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewModel) {
+    val history by settingsViewModel.history.collectAsState()
+    val baseUrl by settingsViewModel.effectiveBaseUrl.collectAsState()
+    val coroutineScope = rememberCoroutineScope()
+    val hapticsEnabled by settingsViewModel.hapticsEnabled.collectAsState()
+    
+    var showDialog by remember { mutableStateOf(false) }
+    var selectedStatusJson by remember { mutableStateOf<JSONObject?>(null) }
+    var selectedId by remember { mutableStateOf("") }
+    var isLoadingStatus by remember { mutableStateOf(false) }
+    var statusError by remember { mutableStateOf<String?>(null) }
+
     Column(
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState())
+            .padding(paddingValues)
+            .padding(16.dp),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        Spacer(modifier = Modifier.height(48.dp))
+
+        Icon(
+            imageVector = Icons.Default.History,
+            contentDescription = "History",
+            modifier = Modifier.size(80.dp),
+            tint = MaterialTheme.colorScheme.primary
+        )
+
+        Spacer(modifier = Modifier.height(24.dp))
+
         Text(
             text = "Recent Activity",
             fontSize = 24.sp,
-            fontWeight = FontWeight.Bold,
-            modifier = Modifier
-                .windowInsetsPadding(WindowInsets.safeDrawing.only(WindowInsetsSides.Horizontal + WindowInsetsSides.Top))
-                .padding(16.dp)
+            fontWeight = FontWeight.Bold
         )
+
+        Spacer(modifier = Modifier.height(32.dp))
         
-        LazyColumn(
-            modifier = Modifier.fillMaxWidth().weight(1f),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            contentPadding = WindowInsets.safeDrawing
-                .only(WindowInsetsSides.Horizontal + WindowInsetsSides.Bottom)
-                .asPaddingValues()
-                .let { insetsPadding ->
-                    PaddingValues(
-                        start = 16.dp + insetsPadding.calculateStartPadding(LayoutDirection.Ltr),
-                        end = 16.dp + insetsPadding.calculateEndPadding(LayoutDirection.Ltr),
-                        top = 8.dp,
-                        bottom = 16.dp + insetsPadding.calculateBottomPadding()
+        if (history.isEmpty()) {
+            Box(modifier = Modifier.fillMaxWidth().padding(top = 32.dp), contentAlignment = Alignment.Center) {
+                Text("No recent activity", color = MaterialTheme.colorScheme.outline)
+            }
+        } else {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                history.forEach { entry ->
+                    HistoryItem(
+                        entry = entry,
+                        onInfoClick = {
+                            selectedId = entry.id
+                            showDialog = true
+                            isLoadingStatus = true
+                            statusError = null
+                            selectedStatusJson = null
+                            
+                            coroutineScope.launch {
+                                try {
+                                    val apiService = createTempApiService(baseUrl)
+                                    val response = apiService.getFileStatus(entry.id)
+                                    if (response.isSuccessful) {
+                                        val body = response.body()?.string()
+                                        if (body != null) {
+                                            selectedStatusJson = JSONObject(body)
+                                        } else {
+                                            statusError = "Empty response from server"
+                                        }
+                                    } else {
+                                        statusError = "Server returned ${response.code()}"
+                                    }
+                                } catch (e: Exception) {
+                                    statusError = e.message ?: "Unknown error"
+                                } finally {
+                                    isLoadingStatus = false
+                                }
+                            }
+                        }
                     )
                 }
-        ) {
-            items(5) { index ->
-                HistoryItem(
-                    isUpload = index % 2 == 0,
-                    fileName = "file_${index + 1}.png",
-                    fileId = "abc${index}xyz",
-                    isEncrypted = index % 3 == 0,
-                    timeAgo = "${index + 1}h ago"
-                )
             }
         }
+    }
+
+    if (showDialog) {
+        AlertDialog(
+            onDismissRequest = { showDialog = false },
+            title = { Text("File Status") },
+            text = {
+                Box(modifier = Modifier.fillMaxWidth().heightIn(min = 100.dp), contentAlignment = Alignment.Center) {
+                    if (isLoadingStatus) {
+                        CircularProgressIndicator()
+                    } else if (statusError != null) {
+                        Text(statusError!!, color = MaterialTheme.colorScheme.error)
+                    } else if (selectedStatusJson != null) {
+                        StatusContent(selectedStatusJson!!, selectedId, hapticsEnabled)
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { showDialog = false }) {
+                    Text("Close")
+                }
+            }
+        )
     }
 }
 
 @Composable
-fun HistoryItem(
-    isUpload: Boolean,
-    fileName: String,
-    fileId: String,
-    isEncrypted: Boolean,
-    timeAgo: String
-) {
+fun StatusContent(json: JSONObject, fileId: String, hapticsEnabled: Boolean) {
+    val fileName = json.optString("file_name", "Unknown")
+    val fileSize = json.optLong("file_size", 0)
+    val timeRemaining = json.optLong("time_remaining", 0)
+    val isEncrypted = json.optBoolean("is_encrypted", false)
+    
+    val clipboardManager = LocalClipboardManager.current
+    val haptic = LocalHapticFeedback.current
+    val coroutineScope = rememberCoroutineScope()
+    var showCopied by remember { mutableStateOf(false) }
+
+    Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        StatusRow("ID (tap to copy)", fileId, modifier = Modifier.clickable {
+            clipboardManager.setText(AnnotatedString(fileId))
+            if (hapticsEnabled) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+            coroutineScope.launch {
+                showCopied = true
+                delay(2000)
+                showCopied = false
+            }
+        })
+        
+        AnimatedVisibility(visible = showCopied) {
+            Text(
+                "ID copied to clipboard!",
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.padding(start = 8.dp)
+            )
+        }
+
+        StatusRow("Name", fileName)
+        StatusRow("Size", formatFileSize(fileSize))
+        StatusRow("Encryption", if (isEncrypted) "Active" else "None")
+        StatusRow("Expires in", formatDuration(timeRemaining))
+    }
+}
+
+@Composable
+fun StatusRow(label: String, value: String, modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(label, fontWeight = FontWeight.Bold, style = MaterialTheme.typography.bodyMedium)
+        Text(value, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+}
+
+@Composable
+fun HistoryItem(entry: HistoryEntry, onInfoClick: () -> Unit) {
+    val timeAgo = formatTimestamp(entry.timestamp)
+    
     Card(
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -76,9 +213,9 @@ fun HistoryItem(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Icon(
-                imageVector = if (isUpload) Icons.Default.FileUpload else Icons.Default.FileDownload,
+                imageVector = if (entry.isUpload) Icons.Default.FileUpload else Icons.Default.FileDownload,
                 contentDescription = null,
-                tint = if (isUpload) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
+                tint = if (entry.isUpload) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
             )
             
             Spacer(modifier = Modifier.width(16.dp))
@@ -86,11 +223,11 @@ fun HistoryItem(
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = fileName,
+                        text = entry.fileName,
                         fontWeight = FontWeight.Bold,
                         fontSize = 16.sp
                     )
-                    if (isEncrypted) {
+                    if (entry.isEncrypted) {
                         Spacer(modifier = Modifier.width(4.dp))
                         Icon(
                             imageVector = Icons.Default.Lock,
@@ -101,17 +238,67 @@ fun HistoryItem(
                     }
                 }
                 Text(
-                    text = "ID: $fileId",
+                    text = "ID: ${entry.id}",
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
             
-            Text(
-                text = timeAgo,
-                fontSize = 12.sp,
-                color = MaterialTheme.colorScheme.outline
-            )
+            Column(horizontalAlignment = Alignment.End) {
+                Text(
+                    text = timeAgo,
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.outline
+                )
+                if (entry.isUpload) {
+                    IconButton(onClick = onInfoClick, modifier = Modifier.size(24.dp)) {
+                        Icon(
+                            imageVector = Icons.Default.Info,
+                            contentDescription = "Status",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(18.dp)
+                        )
+                    }
+                }
+            }
         }
+    }
+}
+
+private fun createTempApiService(baseUrl: String): ApiService {
+    val okHttpClient = OkHttpClient.Builder()
+        .addInterceptor(HttpLoggingInterceptor().apply {
+            level = HttpLoggingInterceptor.Level.HEADERS
+        })
+        .build()
+
+    return Retrofit.Builder()
+        .baseUrl(baseUrl.let { if (it.endsWith("/")) it else "$it/" })
+        .client(okHttpClient)
+        .build()
+        .create(ApiService::class.java)
+}
+
+private fun formatFileSize(size: Long): String {
+    if (size <= 0) return "0 B"
+    val units = arrayOf("B", "KB", "MB", "GB", "TB")
+    val digitGroups = (log10(size.toDouble()) / log10(1024.0)).toInt()
+    return String.format(Locale.getDefault(), "%.1f %s", size / 1024.0.pow(digitGroups.toDouble()), units[digitGroups])
+}
+
+private fun formatDuration(seconds: Long): String {
+    if (seconds <= 0) return "Expired"
+    val h = seconds / 3600
+    val m = (seconds % 3600) / 60
+    return if (h > 0) "${h}h ${m}m" else "${m}m"
+}
+
+private fun formatTimestamp(timestamp: Long): String {
+    val diff = System.currentTimeMillis() - timestamp
+    return when {
+        diff < 60_000 -> "Just now"
+        diff < 3600_000 -> "${diff / 60_000}m ago"
+        diff < 86400_000 -> "${diff / 3600_000}h ago"
+        else -> SimpleDateFormat("MMM d", Locale.getDefault()).format(Date(timestamp))
     }
 }

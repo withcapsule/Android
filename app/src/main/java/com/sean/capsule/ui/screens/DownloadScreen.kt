@@ -57,6 +57,7 @@ enum class ScannerTarget {
 
 @Composable
 fun DownloadScreen(
+    paddingValues: PaddingValues,
     navController: NavController,
     settingsViewModel: SettingsViewModel,
     downloadViewModel: DownloadViewModel
@@ -114,7 +115,7 @@ fun DownloadScreen(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(scrollState)
-            .windowInsetsPadding(WindowInsets.safeDrawing)
+            .padding(paddingValues)
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Top

@@ -6,8 +6,21 @@ import androidx.datastore.preferences.core.*
 import androidx.datastore.preferences.preferencesDataStore
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 
 private val Context.dataStore: DataStore<Preferences> by preferencesDataStore(name = "settings")
+
+@Serializable
+data class HistoryEntry(
+    val id: String,
+    val fileName: String,
+    val timestamp: Long,
+    val isUpload: Boolean,
+    val isEncrypted: Boolean,
+    val url: String? = null
+)
 
 class SettingsRepository(private val context: Context) {
 
@@ -19,7 +32,18 @@ class SettingsRepository(private val context: Context) {
         val ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
         val DOWNLOAD_DIR_URI = stringPreferencesKey("download_dir_uri")
         val THEME_MODE = stringPreferencesKey("theme_mode")
+        val HISTORY_JSON = stringPreferencesKey("history_json")
     }
+
+    val history: Flow<List<HistoryEntry>> = context.dataStore.data
+        .map { preferences ->
+            val json = preferences[PreferencesKeys.HISTORY_JSON] ?: "[]"
+            try {
+                Json.decodeFromString<List<HistoryEntry>>(json)
+            } catch (e: Exception) {
+                emptyList()
+            }
+        }
 
     val themeMode: Flow<String> = context.dataStore.data
         .map { preferences ->
@@ -99,6 +123,20 @@ class SettingsRepository(private val context: Context) {
     suspend fun updateThemeMode(mode: String) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.THEME_MODE] = mode
+        }
+    }
+
+    suspend fun addHistoryEntry(entry: HistoryEntry) {
+        context.dataStore.edit { preferences ->
+            val currentJson = preferences[PreferencesKeys.HISTORY_JSON] ?: "[]"
+            val currentList = try {
+                Json.decodeFromString<List<HistoryEntry>>(currentJson)
+            } catch (e: Exception) {
+                emptyList()
+            }
+            
+            val newList = (listOf(entry) + currentList).take(15)
+            preferences[PreferencesKeys.HISTORY_JSON] = Json.encodeToString(newList)
         }
     }
 }

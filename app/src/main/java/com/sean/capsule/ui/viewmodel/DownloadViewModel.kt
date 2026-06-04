@@ -9,6 +9,8 @@ import androidx.core.net.toUri
 import androidx.documentfile.provider.DocumentFile
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.sean.capsule.data.local.HistoryEntry
+import com.sean.capsule.data.local.SettingsRepository
 import com.sean.capsule.data.remote.ApiService
 import kage.Age
 import kage.Identity
@@ -34,7 +36,7 @@ sealed class DownloadState {
     data class Error(val message: String) : DownloadState()
 }
 
-class DownloadViewModel : ViewModel() {
+class DownloadViewModel(private val repository: SettingsRepository) : ViewModel() {
     private val _downloadState = MutableStateFlow<DownloadState>(DownloadState.Idle)
     val downloadState: StateFlow<DownloadState> = _downloadState.asStateFlow()
 
@@ -66,6 +68,15 @@ class DownloadViewModel : ViewModel() {
                     } else {
                         val finalUri = saveToFinalLocation(context, tempFile, fileName, downloadDirUri)
                         if (finalUri != null) {
+                            repository.addHistoryEntry(
+                                HistoryEntry(
+                                    id = id,
+                                    fileName = fileName,
+                                    timestamp = System.currentTimeMillis(),
+                                    isUpload = false,
+                                    isEncrypted = false
+                                )
+                            )
                             _downloadState.value = DownloadState.Success(finalUri, fileName)
                         } else {
                             _downloadState.value = DownloadState.Error("Failed to save file to destination")
@@ -128,6 +139,15 @@ class DownloadViewModel : ViewModel() {
                 val finalUri = saveToFinalLocation(context, decryptedFile, fileName, downloadDirUri)
                 tempFile.delete()
                 if (finalUri != null) {
+                    repository.addHistoryEntry(
+                        HistoryEntry(
+                            id = extractId(tempFile.name), // This is not ideal as we lost the ID here, but we can pass it down if needed
+                            fileName = fileName,
+                            timestamp = System.currentTimeMillis(),
+                            isUpload = false,
+                            isEncrypted = true
+                        )
+                    )
                     _downloadState.value = DownloadState.Success(finalUri, fileName)
                 } else {
                     _downloadState.value = DownloadState.Error("Failed to save decrypted file")

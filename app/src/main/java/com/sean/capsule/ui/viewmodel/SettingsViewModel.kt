@@ -2,12 +2,14 @@ package com.sean.capsule.ui.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.sean.capsule.data.local.HistoryEntry
 import com.sean.capsule.data.local.SettingsRepository
 import com.sean.capsule.data.remote.ApiService
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
@@ -41,6 +43,9 @@ class SettingsViewModel(private val repository: SettingsRepository) : ViewModel(
             try { ThemeMode.valueOf(mode) } catch (e: Exception) { ThemeMode.SYSTEM }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ThemeMode.SYSTEM)
+
+    val history: StateFlow<List<HistoryEntry>> = repository.history
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     private val _serverOption = MutableStateFlow("Default")
     val serverOption: StateFlow<String> = _serverOption.asStateFlow()

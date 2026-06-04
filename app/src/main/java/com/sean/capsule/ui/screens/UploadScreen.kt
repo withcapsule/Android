@@ -30,7 +30,7 @@ import com.sean.capsule.ui.viewmodel.UploadState
 import com.sean.capsule.ui.viewmodel.UploadViewModel
 
 @Composable
-fun UploadScreen(settingsViewModel: SettingsViewModel, uploadViewModel: UploadViewModel) {
+fun UploadScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewModel, uploadViewModel: UploadViewModel) {
     var isEncrypted by remember { mutableStateOf(false) }
     var selectedFileUri by remember { mutableStateOf<Uri?>(null) }
     val scrollState = rememberScrollState()
@@ -54,7 +54,7 @@ fun UploadScreen(settingsViewModel: SettingsViewModel, uploadViewModel: UploadVi
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(scrollState)
-            .windowInsetsPadding(WindowInsets.safeDrawing)
+            .padding(paddingValues)
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Top

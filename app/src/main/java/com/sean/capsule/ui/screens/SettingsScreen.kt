@@ -29,7 +29,7 @@ import com.sean.capsule.ui.viewmodel.ServerOption
 import com.sean.capsule.ui.viewmodel.ThemeMode
 
 @Composable
-fun SettingsScreen(settingsViewModel: SettingsViewModel) {
+fun SettingsScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewModel) {
     val context = LocalContext.current
     val serverOptionStr by settingsViewModel.serverOption.collectAsState()
     val selectedOption = try {
@@ -68,7 +68,7 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel) {
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(scrollState)
-            .windowInsetsPadding(WindowInsets.safeDrawing)
+            .padding(paddingValues)
             .padding(16.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Top
@@ -322,7 +322,5 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel) {
             color = MaterialTheme.colorScheme.outline,
             modifier = Modifier.padding(bottom = 16.dp)
         )
-
-        Spacer(modifier = Modifier.height(64.dp))
     }
 }

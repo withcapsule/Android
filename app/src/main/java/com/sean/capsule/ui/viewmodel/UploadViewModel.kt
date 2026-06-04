@@ -5,6 +5,8 @@ import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import cash.z.ecc.android.bip39.Mnemonics
+import com.sean.capsule.data.local.HistoryEntry
+import com.sean.capsule.data.local.SettingsRepository
 import com.sean.capsule.data.remote.ApiService
 import kage.Age
 import kage.Recipient
@@ -35,7 +37,7 @@ sealed class UploadState {
     data class Error(val message: String) : UploadState()
 }
 
-class UploadViewModel : ViewModel() {
+class UploadViewModel(private val repository: SettingsRepository) : ViewModel() {
     private val _uploadState = MutableStateFlow<UploadState>(UploadState.Idle)
     val uploadState: StateFlow<UploadState> = _uploadState.asStateFlow()
 
@@ -128,6 +130,18 @@ class UploadViewModel : ViewModel() {
                     val fileId = extractFileId(responseText)
                     if (fileId != null) {
                         val downloadUrl = if (baseUrl.endsWith("/")) "${baseUrl}download/$fileId" else "$baseUrl/download/$fileId"
+                        
+                        repository.addHistoryEntry(
+                            HistoryEntry(
+                                id = fileId,
+                                fileName = fileName,
+                                timestamp = System.currentTimeMillis(),
+                                isUpload = true,
+                                isEncrypted = encrypt,
+                                url = downloadUrl
+                            )
+                        )
+
                         _uploadState.value = UploadState.Success(fileId, downloadUrl, mnemonic)
                     } else {
                         _uploadState.value = UploadState.Error("Failed to parse file ID from response: $responseText")

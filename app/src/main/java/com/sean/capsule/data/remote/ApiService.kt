@@ -19,4 +19,7 @@ interface ApiService {
         @Query("encrypted") encrypted: Boolean,
         @Part file: MultipartBody.Part
     ): Response<ResponseBody>
+
+    @GET("status/{id}")
+    suspend fun getFileStatus(@Path("id") id: String): Response<ResponseBody>
 }

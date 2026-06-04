@@ -73,8 +73,25 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun MainContent(settingsViewModel: SettingsViewModel) {
-    val downloadViewModel: DownloadViewModel = viewModel()
-    val uploadViewModel: UploadViewModel = viewModel()
+    val context = LocalContext.current
+    val settingsRepository = remember { SettingsRepository(context) }
+
+    val downloadViewModel: DownloadViewModel = viewModel(
+        factory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                return DownloadViewModel(settingsRepository) as T
+            }
+        }
+    )
+    val uploadViewModel: UploadViewModel = viewModel(
+        factory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                return UploadViewModel(settingsRepository) as T
+            }
+        }
+    )
     
     val onboardingCompleted by settingsViewModel.onboardingCompleted.collectAsState()
 
@@ -178,7 +195,7 @@ fun AppNavigation(
                     }
                 }
             }
-        ) { _ ->
+        ) { innerPadding ->
             NavHost(
                 navController = navController,
                 startDestination = Upload,
@@ -186,10 +203,18 @@ fun AppNavigation(
                 enterTransition = { fadeIn(animationSpec = tween(250)) },
                 exitTransition = { fadeOut(animationSpec = tween(250)) }
             ) {
-                composable<Upload> { UploadScreen(settingsViewModel, uploadViewModel) }
-                composable<Download> { DownloadScreen(navController, settingsViewModel, downloadViewModel) }
-                composable<History> { HistoryScreen() }
-                composable<Settings> { SettingsScreen(settingsViewModel) }
+                composable<Upload> { 
+                    UploadScreen(innerPadding, settingsViewModel, uploadViewModel) 
+                }
+                composable<Download> { 
+                    DownloadScreen(innerPadding, navController, settingsViewModel, downloadViewModel) 
+                }
+                composable<History> { 
+                    HistoryScreen(innerPadding, settingsViewModel) 
+                }
+                composable<Settings> { 
+                    SettingsScreen(innerPadding, settingsViewModel)
+                }
                 composable<QRScanner>(
                     enterTransition = {
                         slideInVertically(initialOffsetY = { it }, animationSpec = tween(300)) + fadeIn()
