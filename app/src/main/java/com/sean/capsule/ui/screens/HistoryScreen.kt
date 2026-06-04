@@ -51,12 +51,14 @@ fun HistoryScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewM
     var isLoadingStatus by remember { mutableStateOf(false) }
     var statusError by remember { mutableStateOf<String?>(null) }
 
+    var clearHistoryButtonEnabled by remember { mutableStateOf( !history.isEmpty() ) }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState())
             .padding(paddingValues)
-            .padding( 16.dp, 64.dp, 16.dp, 64.dp),
+            .padding(16.dp, 64.dp, 16.dp, 64.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Spacer(modifier = Modifier.height(48.dp))
@@ -79,7 +81,9 @@ fun HistoryScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewM
         Spacer(modifier = Modifier.height(32.dp))
         
         if (history.isEmpty()) {
-            Box(modifier = Modifier.fillMaxWidth().padding(top = 32.dp), contentAlignment = Alignment.Center) {
+            Box(modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 32.dp), contentAlignment = Alignment.Center) {
                 Text("No recent activity", color = MaterialTheme.colorScheme.outline)
             }
         } else {
@@ -122,6 +126,14 @@ fun HistoryScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewM
                 }
             }
         }
+
+        Button(
+            modifier = Modifier.padding( 16.dp ),
+            enabled = clearHistoryButtonEnabled,
+            onClick = { settingsViewModel.clearHistory(); clearHistoryButtonEnabled = false }
+        ) {
+            Text( "Clear history" )
+        }
     }
 
     if (showDialog) {
@@ -129,7 +141,9 @@ fun HistoryScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewM
             onDismissRequest = { showDialog = false },
             title = { Text("File Status") },
             text = {
-                Box(modifier = Modifier.fillMaxWidth().heightIn(min = 100.dp), contentAlignment = Alignment.Center) {
+                Box(modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 100.dp), contentAlignment = Alignment.Center) {
                     if (isLoadingStatus) {
                         CircularProgressIndicator()
                     } else if (statusError != null) {

@@ -139,4 +139,10 @@ class SettingsRepository(private val context: Context) {
             preferences[PreferencesKeys.HISTORY_JSON] = Json.encodeToString(newList)
         }
     }
+
+    suspend fun clearHistory() {
+        context.dataStore.edit { preferences ->
+            preferences.remove(PreferencesKeys.HISTORY_JSON)
+        }
+    }
 }

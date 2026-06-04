@@ -186,4 +186,10 @@ class SettingsViewModel(private val repository: SettingsRepository) : ViewModel(
     fun clearPingResponse() {
         _pingResponse.value = null
     }
+
+    fun clearHistory() {
+        viewModelScope.launch {
+            repository.clearHistory()
+        }
+    }
 }
