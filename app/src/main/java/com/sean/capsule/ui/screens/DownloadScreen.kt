@@ -1,6 +1,7 @@
 package com.sean.capsule.ui.screens
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CaptureRequest
@@ -250,17 +251,44 @@ fun DownloadScreen(
                 Spacer(modifier = Modifier.height(16.dp))
                 if (state is DownloadState.Success) {
                     Card(
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E9)),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer
+                        ),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
-                            Text("Download Success!", fontWeight = FontWeight.Bold, color = Color(0xFF2E7D32))
+                            Text(
+                                "Download Success!", 
+                                fontWeight = FontWeight.Bold, 
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
                             Text("Saved: ${state.fileName}", fontSize = 12.sp)
-                            Button(
-                                onClick = { downloadViewModel.resetState() },
-                                modifier = Modifier.padding(top = 8.dp)
+                            
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                                horizontalArrangement = Arrangement.End
                             ) {
-                                Text("OK")
+                                TextButton(onClick = {
+                                    try {
+                                        val intent = Intent(Intent.ACTION_VIEW).apply {
+                                            setDataAndType(state.uri, context.contentResolver.getType(state.uri) ?: "*/*")
+                                            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                                        }
+                                        context.startActivity(Intent.createChooser(intent, "Open file"))
+                                    } catch (e: Exception) {
+                                        e.printStackTrace()
+                                    }
+                                }) {
+                                    Text("Open File")
+                                }
+                                
+                                Spacer(modifier = Modifier.width(8.dp))
+                                
+                                Button(
+                                    onClick = { downloadViewModel.resetState() }
+                                ) {
+                                    Text("OK")
+                                }
                             }
                         }
                     }

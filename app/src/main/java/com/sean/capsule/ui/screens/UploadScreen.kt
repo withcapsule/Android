@@ -18,7 +18,6 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -157,13 +156,32 @@ fun UploadScreen(settingsViewModel: SettingsViewModel, uploadViewModel: UploadVi
                 Spacer(modifier = Modifier.height(24.dp))
                 if (state is UploadState.Success) {
                     Card(
-                        colors = CardDefaults.cardColors(containerColor = Color(0xFFE8F5E9)),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.secondaryContainer
+                        ),
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
-                            Text("Upload Success!", fontWeight = FontWeight.Bold, color = Color(0xFF2E7D32))
+                            Text(
+                                "Upload Success!", 
+                                fontWeight = FontWeight.Bold, 
+                                color = MaterialTheme.colorScheme.onSecondaryContainer
+                            )
                             Spacer(modifier = Modifier.height(8.dp))
-                            Text("File ID: ${state.fileId}", fontSize = 14.sp)
+                            
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text("File ID: ${state.fileId}", fontSize = 14.sp, modifier = Modifier.weight(1f))
+                                IconButton(onClick = {
+                                    clipboardManager.setText(AnnotatedString(state.fileId))
+                                    if (hapticsEnabled) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                }) {
+                                    Icon(Icons.Default.ContentCopy, contentDescription = "Copy File ID", modifier = Modifier.size(16.dp))
+                                }
+                            }
                             
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
