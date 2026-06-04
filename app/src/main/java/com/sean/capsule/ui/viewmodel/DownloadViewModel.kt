@@ -89,36 +89,38 @@ class DownloadViewModel : ViewModel() {
                 val normalizedMnemonic = mnemonic.trim().replace("\\s+".toRegex(), " ")
                 
                 val decryptedFile = withContext(Dispatchers.IO) {
+                    System.gc() // Try to free up memory before SCrypt allocation
                     val identity = ScryptIdentity(normalizedMnemonic.toByteArray())
                     val totalSize = tempFile.length()
                     val out = File(context.cacheDir, "decrypted_${System.currentTimeMillis()}")
                     
                     // Tracking progress by wrapping the InputStream instead of OutputStream
-                    val inputStream = tempFile.inputStream()
-                    val progressInputStream = object : InputStream() {
-                        private var bytesRead = 0L
-                        override fun read(): Int {
-                            val byte = inputStream.read()
-                            if (byte != -1) updateProgress(1)
-                            return byte
-                        }
-                        override fun read(b: ByteArray, off: Int, len: Int): Int {
-                            val count = inputStream.read(b, off, len)
-                            if (count != -1) updateProgress(count.toLong())
-                            return count
-                        }
-                        private fun updateProgress(count: Long) {
-                            bytesRead += count
-                            if (totalSize > 0) {
-                                val progress = (bytesRead.toFloat() / totalSize).coerceIn(0f, 1f)
-                                _downloadState.value = DownloadState.Decrypting(tempFile, fileName, progress)
+                    tempFile.inputStream().use { fileInputStream ->
+                        val progressInputStream = object : InputStream() {
+                            private var bytesRead = 0L
+                            override fun read(): Int {
+                                val byte = fileInputStream.read()
+                                if (byte != -1) updateProgress(1)
+                                return byte
                             }
+                            override fun read(b: ByteArray, off: Int, len: Int): Int {
+                                val count = fileInputStream.read(b, off, len)
+                                if (count != -1) updateProgress(count.toLong())
+                                return count
+                            }
+                            private fun updateProgress(count: Long) {
+                                bytesRead += count
+                                if (totalSize > 0) {
+                                    val progress = (bytesRead.toFloat() / totalSize).coerceIn(0f, 1f)
+                                    _downloadState.value = DownloadState.Decrypting(tempFile, fileName, progress)
+                                }
+                            }
+                            override fun close() = fileInputStream.close()
                         }
-                        override fun close() = inputStream.close()
-                    }
 
-                    FileOutputStream(out).use { outputStream ->
-                        Age.decryptStream(listOf<Identity>(identity), progressInputStream, outputStream)
+                        FileOutputStream(out).use { outputStream ->
+                            Age.decryptStream(listOf<Identity>(identity), progressInputStream, outputStream)
+                        }
                     }
                     out
                 }

@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import okhttp3.OkHttpClient
@@ -21,6 +22,10 @@ enum class ServerOption(val displayName: String, val baseUrl: String?) {
     Custom("Custom", null)
 }
 
+enum class ThemeMode {
+    LIGHT, DARK, SYSTEM
+}
+
 class SettingsViewModel(private val repository: SettingsRepository) : ViewModel() {
     val onboardingCompleted: StateFlow<Boolean> = repository.onboardingCompleted
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
@@ -30,6 +35,12 @@ class SettingsViewModel(private val repository: SettingsRepository) : ViewModel(
 
     val downloadDirUri: StateFlow<String?> = repository.downloadDirUri
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    val themeMode: StateFlow<ThemeMode> = repository.themeMode
+        .map { mode -> 
+            try { ThemeMode.valueOf(mode) } catch (e: Exception) { ThemeMode.SYSTEM }
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ThemeMode.SYSTEM)
 
     private val _serverOption = MutableStateFlow("Default")
     val serverOption: StateFlow<String> = _serverOption.asStateFlow()
@@ -83,6 +94,12 @@ class SettingsViewModel(private val repository: SettingsRepository) : ViewModel(
     fun setDownloadDirUri(uri: String?) {
         viewModelScope.launch {
             repository.updateDownloadDirUri(uri)
+        }
+    }
+
+    fun setThemeMode(mode: ThemeMode) {
+        viewModelScope.launch {
+            repository.updateThemeMode(mode.name)
         }
     }
 

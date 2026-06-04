@@ -18,7 +18,13 @@ class SettingsRepository(private val context: Context) {
         val CUSTOM_PROTOCOL_INDEX = intPreferencesKey("custom_protocol_index")
         val ONBOARDING_COMPLETED = booleanPreferencesKey("onboarding_completed")
         val DOWNLOAD_DIR_URI = stringPreferencesKey("download_dir_uri")
+        val THEME_MODE = stringPreferencesKey("theme_mode")
     }
+
+    val themeMode: Flow<String> = context.dataStore.data
+        .map { preferences ->
+            preferences[PreferencesKeys.THEME_MODE] ?: "SYSTEM"
+        }
 
     val onboardingCompleted: Flow<Boolean> = context.dataStore.data
         .map { preferences ->
@@ -87,6 +93,12 @@ class SettingsRepository(private val context: Context) {
             } else {
                 preferences[PreferencesKeys.DOWNLOAD_DIR_URI] = uri
             }
+        }
+    }
+
+    suspend fun updateThemeMode(mode: String) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.THEME_MODE] = mode
         }
     }
 }

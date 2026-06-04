@@ -17,6 +17,7 @@ datastore = "1.2.1"
 camerax = "1.6.1"
 mlkit-barcode = "17.3.0"
 kage = "0.4.0"
+bip39 = "1.0.9"
 documentfile = "1.1.0"
 
 [libraries]
@@ -28,6 +29,7 @@ androidx-camera-lifecycle = { group = "androidx.camera", name = "camera-lifecycl
 androidx-camera-view = { group = "androidx.camera", name = "camera-view", version.ref = "camerax" }
 google-mlkit-barcode-scanning = { group = "com.google.mlkit", name = "barcode-scanning", version.ref = "mlkit-barcode" }
 kage = { group = "com.github.android-password-store", name = "kage", version.ref = "kage" }
+kbip39 = { group = "cash.z.ecc.android", name = "kotlin-bip39", version.ref = "bip39" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }

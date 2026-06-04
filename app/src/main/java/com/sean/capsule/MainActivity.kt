@@ -33,7 +33,9 @@ import com.sean.capsule.data.local.SettingsRepository
 import com.sean.capsule.ui.screens.*
 import com.sean.capsule.ui.theme.CapsuleTheme
 import com.sean.capsule.ui.viewmodel.DownloadViewModel
+import com.sean.capsule.ui.viewmodel.UploadViewModel
 import com.sean.capsule.ui.viewmodel.SettingsViewModel
+import com.sean.capsule.ui.viewmodel.ThemeMode
 import kotlinx.serialization.Serializable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -44,33 +46,40 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            CapsuleTheme {
-                MainContent()
+            val context = LocalContext.current
+            val settingsRepository = remember { SettingsRepository(context) }
+            val settingsViewModel: SettingsViewModel = viewModel(
+                factory = object : ViewModelProvider.Factory {
+                    @Suppress("UNCHECKED_CAST")
+                    override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                        return SettingsViewModel(settingsRepository) as T
+                    }
+                }
+            )
+            val themeMode by settingsViewModel.themeMode.collectAsState()
+
+            CapsuleTheme(
+                darkTheme = when (themeMode) {
+                    ThemeMode.LIGHT -> false
+                    ThemeMode.DARK -> true
+                    ThemeMode.SYSTEM -> androidx.compose.foundation.isSystemInDarkTheme()
+                }
+            ) {
+                MainContent(settingsViewModel)
             }
         }
     }
 }
 
 @Composable
-fun MainContent() {
-    val context = LocalContext.current
-    val settingsRepository = remember { SettingsRepository(context) }
-    
-    val settingsViewModel: SettingsViewModel = viewModel(
-        factory = object : ViewModelProvider.Factory {
-            @Suppress("UNCHECKED_CAST")
-            override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                return SettingsViewModel(settingsRepository) as T
-            }
-        }
-    )
-    
+fun MainContent(settingsViewModel: SettingsViewModel) {
     val downloadViewModel: DownloadViewModel = viewModel()
+    val uploadViewModel: UploadViewModel = viewModel()
     
     val onboardingCompleted by settingsViewModel.onboardingCompleted.collectAsState()
 
     if (onboardingCompleted) {
-        AppNavigation(settingsViewModel, downloadViewModel)
+        AppNavigation(settingsViewModel, downloadViewModel, uploadViewModel)
     } else {
         OnboardingScreen(settingsViewModel)
     }
@@ -85,7 +94,11 @@ fun MainContent() {
 data class TopLevelRoute<T : Any>(val name: String, val route: T, val icon: ImageVector)
 
 @Composable
-fun AppNavigation(settingsViewModel: SettingsViewModel, downloadViewModel: DownloadViewModel) {
+fun AppNavigation(
+    settingsViewModel: SettingsViewModel,
+    downloadViewModel: DownloadViewModel,
+    uploadViewModel: UploadViewModel
+) {
     val navController = rememberNavController()
     val configuration = LocalConfiguration.current
     val haptic = LocalHapticFeedback.current
@@ -173,7 +186,7 @@ fun AppNavigation(settingsViewModel: SettingsViewModel, downloadViewModel: Downl
                 enterTransition = { fadeIn(animationSpec = tween(250)) },
                 exitTransition = { fadeOut(animationSpec = tween(250)) }
             ) {
-                composable<Upload> { UploadScreen(settingsViewModel) }
+                composable<Upload> { UploadScreen(settingsViewModel, uploadViewModel) }
                 composable<Download> { DownloadScreen(navController, settingsViewModel, downloadViewModel) }
                 composable<History> { HistoryScreen() }
                 composable<Settings> { SettingsScreen(settingsViewModel) }

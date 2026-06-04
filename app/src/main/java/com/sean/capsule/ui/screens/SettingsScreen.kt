@@ -26,6 +26,7 @@ import androidx.core.net.toUri
 import com.sean.capsule.ui.components.LargeDropdownMenu
 import com.sean.capsule.ui.viewmodel.SettingsViewModel
 import com.sean.capsule.ui.viewmodel.ServerOption
+import com.sean.capsule.ui.viewmodel.ThemeMode
 
 @Composable
 fun SettingsScreen(settingsViewModel: SettingsViewModel) {
@@ -40,6 +41,7 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel) {
     val customUrl by settingsViewModel.customUrl.collectAsState()
     val selectedProtocolIndex by settingsViewModel.customProtocolIndex.collectAsState()
     val downloadDirUri by settingsViewModel.downloadDirUri.collectAsState()
+    val themeMode by settingsViewModel.themeMode.collectAsState()
     
     val protocols = listOf("https://", "http://")
     val scrollState = rememberScrollState()
@@ -276,9 +278,43 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel) {
                     onCheckedChange = null
                 )
             }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            Text(
+                text = "App Theme",
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            ThemeMode.entries.forEach { mode ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(56.dp)
+                        .selectable(
+                            selected = (themeMode == mode),
+                            onClick = { settingsViewModel.setThemeMode(mode) },
+                            role = Role.RadioButton
+                        )
+                        .padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    RadioButton(
+                        selected = (themeMode == mode),
+                        onClick = null
+                    )
+                    Text(
+                        text = mode.name.lowercase().replaceFirstChar { it.uppercase() },
+                        style = MaterialTheme.typography.bodyLarge,
+                        modifier = Modifier.padding(start = 16.dp)
+                    )
+                }
+            }
         }
         
-        Spacer(modifier = Modifier.weight(1f))
+//        Spacer(modifier = Modifier.weight(1f))
+        Spacer(modifier = Modifier.height(24.dp))
         
         Text(
             text = "Capsule Android v1.0",
@@ -286,5 +322,7 @@ fun SettingsScreen(settingsViewModel: SettingsViewModel) {
             color = MaterialTheme.colorScheme.outline,
             modifier = Modifier.padding(bottom = 16.dp)
         )
+
+        Spacer(modifier = Modifier.height(64.dp))
     }
 }

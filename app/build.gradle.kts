@@ -56,6 +56,7 @@ dependencies {
     implementation(libs.androidx.camera.view)
     implementation(libs.google.mlkit.barcode.scanning)
     implementation(libs.kage)
+    implementation(libs.kbip39)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
