@@ -42,6 +42,14 @@ fun UploadScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewMo
     val hapticsEnabled by settingsViewModel.hapticsEnabled.collectAsState()
     val baseUrl by settingsViewModel.effectiveBaseUrl.collectAsState()
     val uploadState by uploadViewModel.uploadState.collectAsState()
+    val sharedFileUri by uploadViewModel.sharedFileUri.collectAsState()
+
+    LaunchedEffect(sharedFileUri) {
+        sharedFileUri?.let {
+            selectedFileUri = it
+            uploadViewModel.setSharedFileUri(null)
+        }
+    }
 
     val filePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent(),
@@ -122,7 +130,6 @@ fun UploadScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewMo
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Upload Button or Progress
         when (val state = uploadState) {
             is UploadState.Encrypting -> {
                 UploadProgress(label = "Encrypting...", progress = state.progress)
@@ -145,7 +152,6 @@ fun UploadScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewMo
             }
         }
 
-        // Terminal States
         AnimatedVisibility(
             visible = uploadState is UploadState.Success || uploadState is UploadState.Error,
             enter = fadeIn() + expandVertically(),

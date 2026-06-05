@@ -1,7 +1,11 @@
 package com.sean.capsule
 
+import android.content.Intent
 import android.content.res.Configuration
+import android.net.Uri
 import android.os.Bundle
+import android.os.Build
+import android.os.Parcelable
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -43,21 +47,31 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 
 class MainActivity : ComponentActivity() {
+    private lateinit var uploadViewModel: UploadViewModel
+
     override fun onCreate(savedInstanceState: Bundle?) {
         val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        setContent {
-            val context = LocalContext.current
-            val settingsRepository = remember { SettingsRepository(context) }
-            val settingsViewModel: SettingsViewModel = viewModel(
-                factory = object : ViewModelProvider.Factory {
-                    @Suppress("UNCHECKED_CAST")
-                    override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                        return SettingsViewModel(settingsRepository) as T
-                    }
+
+        val settingsRepository = SettingsRepository(this)
+        val viewModelFactory = object : ViewModelProvider.Factory {
+            @Suppress("UNCHECKED_CAST")
+            override fun <T : ViewModel> create(modelClass: Class<T>): T {
+                return when {
+                    modelClass.isAssignableFrom(SettingsViewModel::class.java) -> SettingsViewModel(settingsRepository) as T
+                    modelClass.isAssignableFrom(UploadViewModel::class.java) -> UploadViewModel(settingsRepository) as T
+                    else -> throw IllegalArgumentException("Unknown ViewModel class")
                 }
-            )
+            }
+        }
+        
+        uploadViewModel = ViewModelProvider(this, viewModelFactory)[UploadViewModel::class.java]
+        val settingsViewModel = ViewModelProvider(this, viewModelFactory)[SettingsViewModel::class.java]
+
+        handleIntent(intent)
+
+        setContent {
             val isReady by settingsViewModel.isReady.collectAsState()
             splashScreen.setKeepOnScreenCondition { !isReady }
 
@@ -70,14 +84,31 @@ class MainActivity : ComponentActivity() {
                     ThemeMode.SYSTEM -> androidx.compose.foundation.isSystemInDarkTheme()
                 }
             ) {
-                MainContent(settingsViewModel)
+                MainContent(settingsViewModel, uploadViewModel)
             }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleIntent(intent)
+    }
+
+    private fun handleIntent(intent: Intent?) {
+        if (intent?.action == Intent.ACTION_SEND) {
+            val uri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
+            } else {
+                @Suppress("DEPRECATION")
+                intent.getParcelableExtra<Parcelable>(Intent.EXTRA_STREAM) as? Uri
+            }
+            uri?.let { uploadViewModel.setSharedFileUri(it) }
         }
     }
 }
 
 @Composable
-fun MainContent(settingsViewModel: SettingsViewModel) {
+fun MainContent(settingsViewModel: SettingsViewModel, uploadViewModel: UploadViewModel) {
     val context = LocalContext.current
     val settingsRepository = remember { SettingsRepository(context) }
 
@@ -86,14 +117,6 @@ fun MainContent(settingsViewModel: SettingsViewModel) {
             @Suppress("UNCHECKED_CAST")
             override fun <T : ViewModel> create(modelClass: Class<T>): T {
                 return DownloadViewModel(settingsRepository) as T
-            }
-        }
-    )
-    val uploadViewModel: UploadViewModel = viewModel(
-        factory = object : ViewModelProvider.Factory {
-            @Suppress("UNCHECKED_CAST")
-            override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                return UploadViewModel(settingsRepository) as T
             }
         }
     )
@@ -131,6 +154,20 @@ fun AppNavigation(
     val currentDestination = navBackStackEntry?.destination
     val isScannerVisible = currentDestination?.hasRoute(QRScanner::class) == true
     
+    val sharedFileUri by uploadViewModel.sharedFileUri.collectAsState()
+    
+    LaunchedEffect(sharedFileUri) {
+        if (sharedFileUri != null) {
+            navController.navigate(Upload) {
+                popUpTo(navController.graph.findStartDestination().id) {
+                    saveState = true
+                }
+                launchSingleTop = true
+                restoreState = true
+            }
+        }
+    }
+
     val routes = listOf(
         TopLevelRoute("Send", Upload, Icons.Default.Upload),
         TopLevelRoute("Receive", Download, Icons.Default.Download),

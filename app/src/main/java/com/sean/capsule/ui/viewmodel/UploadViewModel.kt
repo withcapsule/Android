@@ -39,6 +39,13 @@ class UploadViewModel(private val repository: SettingsRepository) : ViewModel() 
     private val _uploadState = MutableStateFlow<UploadState>(UploadState.Idle)
     val uploadState: StateFlow<UploadState> = _uploadState.asStateFlow()
 
+    private val _sharedFileUri = MutableStateFlow<Uri?>(null)
+    val sharedFileUri: StateFlow<Uri?> = _sharedFileUri.asStateFlow()
+
+    fun setSharedFileUri(uri: Uri?) {
+        _sharedFileUri.value = uri
+    }
+
     fun uploadFile(context: Context, baseUrl: String, fileUri: Uri, encrypt: Boolean) {
         viewModelScope.launch {
             try {
