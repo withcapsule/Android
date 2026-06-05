@@ -87,11 +87,20 @@ class SettingsViewModel(private val repository: SettingsRepository) : ViewModel(
     private val _selectedStatusId = MutableStateFlow("")
     val selectedStatusId: StateFlow<String> = _selectedStatusId.asStateFlow()
 
+    private val _isReady = MutableStateFlow(false)
+    val isReady: StateFlow<Boolean> = _isReady.asStateFlow()
+
     init {
         viewModelScope.launch {
+            // Ensure we've loaded the critical settings before dismissing splash screen
             _serverOption.value = repository.serverOption.first()
             _customUrl.value = repository.customUrl.first()
             _customProtocolIndex.value = repository.customProtocolIndex.first()
+            
+            // Also wait for onboarding state to be loaded from DataStore
+            repository.onboardingCompleted.first()
+
+            _isReady.value = true
         }
     }
 
