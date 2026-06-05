@@ -32,7 +32,7 @@ import io.github.alexzhirkevich.qrose.rememberQrCodePainter
 fun UploadScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewModel, uploadViewModel: UploadViewModel) {
     var isEncrypted by remember { mutableStateOf(false) }
     var selectedFileUri by remember { mutableStateOf<Uri?>(null) }
-    var showQrDialog by remember { mutableStateOf(false) }
+    var qrDialogData by remember { mutableStateOf<Pair<String, String>?>(null) } // Title to Content
     val scrollState = rememberScrollState()
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
@@ -220,34 +220,44 @@ fun UploadScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewMo
                                 }
                             }
 
-                            Row(
-                                modifier = Modifier.padding(top = 8.dp).align(Alignment.End),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            Column(
+                                modifier = Modifier.padding(top = 16.dp).fillMaxWidth(),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                TextButton(
-                                    onClick = { showQrDialog = true }
+                                if (state.mnemonic != null) {
+                                    Button(
+                                        onClick = { qrDialogData = "Scan Decryption Phrases" to state.mnemonic },
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Text("Show Decryption QR Code")
+                                    }
+                                }
+                                Button(
+                                    onClick = { qrDialogData = "Scan to Receive" to state.downloadUrl },
+                                    modifier = Modifier.fillMaxWidth()
                                 ) {
-                                    Text("Show QR")
+                                    Text("Show Download Link QR Code")
                                 }
                                 Button(
                                     onClick = { 
                                         uploadViewModel.resetState() 
                                         selectedFileUri = null
-                                    }
+                                    },
+                                    modifier = Modifier.fillMaxWidth()
                                 ) {
                                     Text("Done")
                                 }
                             }
 
-                            if (showQrDialog) {
+                            qrDialogData?.let { (title, content) ->
                                 AlertDialog(
-                                    onDismissRequest = { showQrDialog = false },
+                                    onDismissRequest = { qrDialogData = null },
                                     confirmButton = {
-                                        TextButton(onClick = { showQrDialog = false }) {
+                                        TextButton(onClick = { qrDialogData = null }) {
                                             Text("Close")
                                         }
                                     },
-                                    title = { Text("Scan to Receive") },
+                                    title = { Text(title) },
                                     text = {
                                         Box(
                                             modifier = Modifier.fillMaxWidth(),
@@ -255,7 +265,7 @@ fun UploadScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewMo
                                         ) {
                                             Image(
                                                 painter = rememberQrCodePainter(
-                                                    data = state.downloadUrl,
+                                                    data = content,
                                                     shapes = QrShapes(
                                                         ball = QrBallShape.roundCorners(.25f),
                                                         darkPixel = QrPixelShape.roundCorners(.5f),

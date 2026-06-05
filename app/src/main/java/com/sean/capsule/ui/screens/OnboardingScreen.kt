@@ -306,10 +306,12 @@ fun DownloadFolderPage(settingsViewModel: SettingsViewModel, onNext: () -> Unit)
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(32.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center
+//            .navigationBarsPadding()
+            .verticalScroll( rememberScrollState() )
+            .padding( 32.dp, 48.dp, 32.dp, 48.dp ),
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
+        Spacer(modifier = Modifier.height(48.dp))
         Icon(
             imageVector = Icons.Default.Folder,
             contentDescription = null,
