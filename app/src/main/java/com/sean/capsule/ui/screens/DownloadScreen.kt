@@ -129,7 +129,7 @@ fun DownloadScreen(
         
         Icon(
             imageVector = Icons.Default.Download,
-            contentDescription = "Download",
+            contentDescription = "Receive",
             modifier = Modifier.size(80.dp),
             tint = MaterialTheme.colorScheme.primary
         )
@@ -137,7 +137,7 @@ fun DownloadScreen(
         Spacer(modifier = Modifier.height(24.dp))
         
         Text(
-            text = "Download File",
+            text = "Receive File",
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold
         )
@@ -175,7 +175,7 @@ fun DownloadScreen(
 
         when (val state = downloadState) {
             is DownloadState.Downloading -> {
-                DownloadProgress(label = "Downloading...", progress = state.progress)
+                DownloadProgress(label = "Receiving...", progress = state.progress)
             }
             is DownloadState.Decrypting -> {
                 DownloadProgress(label = "Decrypting...", progress = state.progress)
@@ -249,7 +249,7 @@ fun DownloadScreen(
                     modifier = Modifier.fillMaxWidth(),
                     enabled = idOrUrl.isNotBlank()
                 ) {
-                    Text("Download")
+                    Text("Receive")
                 }
             }
         }
@@ -271,7 +271,7 @@ fun DownloadScreen(
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Text(
-                                "Download Success!", 
+                                "Receive Success!",
                                 fontWeight = FontWeight.Bold, 
                                 color = MaterialTheme.colorScheme.onSecondaryContainer
                             )

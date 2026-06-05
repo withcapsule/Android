@@ -101,7 +101,7 @@ fun CameraPermissionPage(onNext: () -> Unit) {
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            text = "Capsule can use your camera to scan QR codes for quick downloads. This is completely optional.",
+            text = "Capsule can use your camera to scan QR codes for quick receiving. This is completely optional.",
             fontSize = 18.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
@@ -318,7 +318,7 @@ fun DownloadFolderPage(settingsViewModel: SettingsViewModel, onNext: () -> Unit)
         )
         Spacer(modifier = Modifier.height(32.dp))
         Text(
-            text = "Download Directory",
+            text = "Receive Directory",
             fontSize = 28.sp,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center

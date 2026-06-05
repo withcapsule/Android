@@ -207,13 +207,13 @@ fun SettingsScreen(paddingValues: PaddingValues, settingsViewModel: SettingsView
 
         Column(modifier = Modifier.fillMaxWidth()) {
             Text(
-                text = "Download Settings",
+                text = "Receive Settings",
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
 
             ListItem(
-                headlineContent = { Text("Download Directory") },
+                headlineContent = { Text("Receive Directory") },
                 supportingContent = { 
                     Text(
                         if (downloadDirUri == null) "Default (Downloads/Capsules)"

@@ -127,8 +127,8 @@ fun AppNavigation(
     val isScannerVisible = currentDestination?.hasRoute(QRScanner::class) == true
     
     val routes = listOf(
-        TopLevelRoute("Upload", Upload, Icons.Default.Upload),
-        TopLevelRoute("Download", Download, Icons.Default.Download),
+        TopLevelRoute("Send", Upload, Icons.Default.Upload),
+        TopLevelRoute("Receive", Download, Icons.Default.Download),
         TopLevelRoute("History", History, Icons.Default.History),
         TopLevelRoute("Settings", Settings, Icons.Default.Settings)
     )

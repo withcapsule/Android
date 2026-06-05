@@ -63,7 +63,7 @@ fun UploadScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewMo
         
         Icon(
             imageVector = Icons.Default.UploadFile,
-            contentDescription = "Upload",
+            contentDescription = "Send",
             modifier = Modifier.size(100.dp),
             tint = MaterialTheme.colorScheme.primary
         )
@@ -71,7 +71,7 @@ fun UploadScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewMo
         Spacer(modifier = Modifier.height(24.dp))
         
         Text(
-            text = "Upload File",
+            text = "Send File",
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold
         )
@@ -128,7 +128,7 @@ fun UploadScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewMo
                 UploadProgress(label = "Encrypting...", progress = state.progress)
             }
             is UploadState.Uploading -> {
-                UploadProgress(label = "Uploading...", progress = state.progress)
+                UploadProgress(label = "Sending...", progress = state.progress)
             }
             else -> {
                 Button(
@@ -140,7 +140,7 @@ fun UploadScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewMo
                     modifier = Modifier.fillMaxWidth(),
                     enabled = selectedFileUri != null
                 ) {
-                    Text("Start Upload")
+                    Text("Send File")
                 }
             }
         }
@@ -163,7 +163,7 @@ fun UploadScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewMo
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Text(
-                                "Upload Success!", 
+                                "Send Success!",
                                 fontWeight = FontWeight.Bold, 
                                 color = MaterialTheme.colorScheme.onSecondaryContainer
                             )
