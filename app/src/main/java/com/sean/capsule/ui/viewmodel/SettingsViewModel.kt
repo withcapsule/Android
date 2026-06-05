@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.sean.capsule.data.local.HistoryEntry
 import com.sean.capsule.data.local.SettingsRepository
 import com.sean.capsule.data.remote.ApiService
+import com.sean.capsule.data.remote.FileStatus
 import com.sean.capsule.data.remote.RetrofitClient
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -73,6 +74,18 @@ class SettingsViewModel(private val repository: SettingsRepository) : ViewModel(
 
     private val _isPinging = MutableStateFlow(false)
     val isPinging: StateFlow<Boolean> = _isPinging.asStateFlow()
+
+    private val _fileStatus = MutableStateFlow<FileStatus?>(null)
+    val fileStatus: StateFlow<FileStatus?> = _fileStatus.asStateFlow()
+
+    private val _isLoadingStatus = MutableStateFlow(false)
+    val isLoadingStatus: StateFlow<Boolean> = _isLoadingStatus.asStateFlow()
+
+    private val _statusError = MutableStateFlow<String?>(null)
+    val statusError: StateFlow<String?> = _statusError.asStateFlow()
+
+    private val _selectedStatusId = MutableStateFlow("")
+    val selectedStatusId: StateFlow<String> = _selectedStatusId.asStateFlow()
 
     init {
         viewModelScope.launch {
@@ -171,6 +184,40 @@ class SettingsViewModel(private val repository: SettingsRepository) : ViewModel(
     
     fun clearPingResponse() {
         _pingResponse.value = null
+    }
+
+    fun fetchFileStatus(fileId: String) {
+        viewModelScope.launch {
+            _selectedStatusId.value = fileId
+            _isLoadingStatus.value = true
+            _statusError.value = null
+            _fileStatus.value = null
+
+            try {
+                val apiService = RetrofitClient.getApiService(effectiveBaseUrl.value)
+                val response = apiService.getFileStatus(fileId)
+                if (response.isSuccessful) {
+                    _fileStatus.value = response.body()
+                } else {
+                    val code = response.code()
+                    _statusError.value = if (code == 404) {
+                        "File not found on server. Either it expired or it was deleted. (Error code 404)"
+                    } else {
+                        "Server returned $code"
+                    }
+                }
+            } catch (e: Exception) {
+                _statusError.value = e.message ?: "Unknown error"
+            } finally {
+                _isLoadingStatus.value = false
+            }
+        }
+    }
+
+    fun clearFileStatus() {
+        _fileStatus.value = null
+        _statusError.value = null
+        _selectedStatusId.value = ""
     }
 
     fun clearHistory() {

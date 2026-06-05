@@ -26,11 +26,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sean.capsule.data.local.HistoryEntry
 import com.sean.capsule.data.remote.ApiService
+import com.sean.capsule.data.remote.FileStatus
 import com.sean.capsule.data.remote.RetrofitClient
 import com.sean.capsule.ui.viewmodel.SettingsViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import org.json.JSONObject
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -41,16 +41,15 @@ import kotlin.math.pow
 @Composable
 fun HistoryScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewModel) {
     val history by settingsViewModel.history.collectAsState()
-    val baseUrl by settingsViewModel.effectiveBaseUrl.collectAsState()
     val coroutineScope = rememberCoroutineScope()
     val hapticsEnabled by settingsViewModel.hapticsEnabled.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
     
-    var showStatusDialog by remember { mutableStateOf(false) }
-    var selectedStatusJson by remember { mutableStateOf<JSONObject?>(null) }
-    var selectedId by remember { mutableStateOf("") }
-    var isLoadingStatus by remember { mutableStateOf(false) }
-    var statusError by remember { mutableStateOf<String?>(null) }
+    var showStatusDialog by rememberSaveable { mutableStateOf(false) }
+    val selectedStatus by settingsViewModel.fileStatus.collectAsState()
+    val isLoadingStatus by settingsViewModel.isLoadingStatus.collectAsState()
+    val statusError by settingsViewModel.statusError.collectAsState()
+    val selectedId by settingsViewModel.selectedStatusId.collectAsState()
 
     var itemToDeleteId by rememberSaveable { mutableStateOf<String?>(null) }
     var deleteDirection by rememberSaveable { mutableStateOf<SwipeToDismissBoxValue?>(null) }
@@ -149,38 +148,8 @@ fun HistoryScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewM
                                 HistoryItem(
                                     entry = entry,
                                     onInfoClick = {
-                                        selectedId = entry.id
                                         showStatusDialog = true
-                                        isLoadingStatus = true
-                                        statusError = null
-                                        selectedStatusJson = null
-                                        
-                                        coroutineScope.launch {
-                                            try {
-                                                val apiService = RetrofitClient.getApiService(baseUrl)
-                                                val response = apiService.getFileStatus(entry.id)
-                                                if (response.isSuccessful) {
-                                                    val body = response.body()?.string()
-                                                    if (body != null) {
-                                                        selectedStatusJson = JSONObject(body)
-                                                    } else {
-                                                        statusError = "Empty response from server"
-                                                    }
-                                                } else {
-                                                    val code = response.code();
-                                                    statusError = if ( code == 404 ) {
-                                                        "File not found on server. Either it expired or it was deleted. (Error code 404)"
-                                                    } else {
-                                                        "Server returned $code"
-                                                    }
-
-                                                }
-                                            } catch (e: Exception) {
-                                                statusError = e.message ?: "Unknown error"
-                                            } finally {
-                                                isLoadingStatus = false
-                                            }
-                                        }
+                                        settingsViewModel.fetchFileStatus(entry.id)
                                     }
                                 )
                             }
@@ -203,7 +172,10 @@ fun HistoryScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewM
 
     if (showStatusDialog) {
         AlertDialog(
-            onDismissRequest = { showStatusDialog = false },
+            onDismissRequest = { 
+                showStatusDialog = false
+                settingsViewModel.clearFileStatus()
+            },
             title = { Text("File Status") },
             text = {
                 Box(modifier = Modifier
@@ -213,13 +185,16 @@ fun HistoryScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewM
                         CircularProgressIndicator()
                     } else if (statusError != null) {
                         Text(statusError!!, color = MaterialTheme.colorScheme.error)
-                    } else if (selectedStatusJson != null) {
-                        StatusContent(selectedStatusJson!!, selectedId, hapticsEnabled)
+                    } else if (selectedStatus != null) {
+                        StatusContent(selectedStatus!!, selectedId, hapticsEnabled)
                     }
                 }
             },
             confirmButton = {
-                TextButton(onClick = { showStatusDialog = false }) {
+                TextButton(onClick = { 
+                    showStatusDialog = false 
+                    settingsViewModel.clearFileStatus()
+                }) {
                     Text("Close")
                 }
             }
@@ -294,11 +269,11 @@ fun HistoryScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewM
 }
 
 @Composable
-fun StatusContent(json: JSONObject, fileId: String, hapticsEnabled: Boolean) {
-    val fileName = json.optString("file_name", "Unknown")
-    val fileSize = json.optLong("file_size", 0)
-    val timeRemaining = json.optLong("time_remaining", 0)
-    val isEncrypted = json.optBoolean("is_encrypted", false)
+fun StatusContent(status: FileStatus, fileId: String, hapticsEnabled: Boolean) {
+    val fileName = status.file_name
+    val fileSize = status.file_size
+    val timeRemaining = status.time_remaining
+    val isEncrypted = status.is_encrypted
     
     val clipboardManager = LocalClipboardManager.current
     val haptic = LocalHapticFeedback.current

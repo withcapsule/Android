@@ -21,10 +21,8 @@ import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
-import okhttp3.logging.HttpLoggingInterceptor
 import okio.BufferedSink
 import okio.source
-import retrofit2.Retrofit
 import java.io.File
 import java.io.FileOutputStream
 import java.io.InputStream
@@ -45,25 +43,25 @@ class UploadViewModel(private val repository: SettingsRepository) : ViewModel() 
         viewModelScope.launch {
             try {
                 val fileName = getFileName(context, fileUri) ?: "file"
-                val totalSize = getFileSize(context, fileUri)
+                val originalSize = getFileSize(context, fileUri)
 
-                var uploadFile: File
                 var mnemonic: String? = null
+                var tempEncryptedFile: File? = null
 
-                if (encrypt) {
+                val requestFile = if (encrypt) {
                     _uploadState.value = UploadState.Encrypting(0f)
                     val generatedMnemonic = Mnemonics.MnemonicCode(Mnemonics.WordCount.COUNT_12).words.joinToString(" ") { String(it) }
                     mnemonic = generatedMnemonic
                     
-                    val tempEncryptedFile = File(context.cacheDir, "upload_encrypted_${System.currentTimeMillis()}")
+                    val tempFile = File(context.cacheDir, "upload_encrypted_${System.currentTimeMillis()}")
+                    tempEncryptedFile = tempFile
                     
                     withContext(Dispatchers.IO) {
                         System.gc() // Try to free up memory before SCrypt allocation
                         val recipient = ScryptRecipient(generatedMnemonic.toByteArray())
                         
                         context.contentResolver.openInputStream(fileUri)?.use { inputStream ->
-                            FileOutputStream(tempEncryptedFile).use { out ->
-                                // Track encryption progress by wrapping input stream
+                            FileOutputStream(tempFile).use { out ->
                                 val progressInputStream = object : InputStream() {
                                     private var bytesRead = 0L
                                     override fun read(): Int {
@@ -78,8 +76,8 @@ class UploadViewModel(private val repository: SettingsRepository) : ViewModel() 
                                     }
                                     private fun updateProgress(count: Long) {
                                         bytesRead += count
-                                        if (totalSize > 0) {
-                                            _uploadState.value = UploadState.Encrypting(bytesRead.toFloat() / totalSize)
+                                        if (originalSize > 0) {
+                                            _uploadState.value = UploadState.Encrypting(bytesRead.toFloat() / originalSize)
                                         }
                                     }
                                     override fun close() = inputStream.close()
@@ -89,39 +87,45 @@ class UploadViewModel(private val repository: SettingsRepository) : ViewModel() 
                             }
                         } ?: throw Exception("Failed to open input stream")
                     }
-                    uploadFile = tempEncryptedFile
-                } else {
-                    // Copy to temp file for upload consistency
-                    val tempFile = File(context.cacheDir, "upload_temp_${System.currentTimeMillis()}")
-                    withContext(Dispatchers.IO) {
-                        context.contentResolver.openInputStream(fileUri)?.use { input ->
-                            FileOutputStream(tempFile).use { output ->
-                                input.copyTo(output)
+
+                    object : RequestBody() {
+                        override fun contentType() = "application/octet-stream".toMediaTypeOrNull()
+                        override fun contentLength() = tempFile.length()
+                        override fun writeTo(sink: BufferedSink) {
+                            tempFile.source().use { source ->
+                                var totalWritten = 0L
+                                val totalToUpload = tempFile.length()
+                                var read: Long
+                                while (source.read(sink.buffer, 8192).also { read = it } != -1L) {
+                                    totalWritten += read
+                                    _uploadState.value = UploadState.Uploading(totalWritten.toFloat() / totalToUpload)
+                                }
                             }
-                        } ?: throw Exception("Failed to open input stream")
+                        }
                     }
-                    uploadFile = tempFile
+                } else {
+                    object : RequestBody() {
+                        override fun contentType() = "application/octet-stream".toMediaTypeOrNull()
+                        override fun contentLength() = originalSize
+                        override fun writeTo(sink: BufferedSink) {
+                            context.contentResolver.openInputStream(fileUri)?.use { input ->
+                                input.source().use { source ->
+                                    var totalWritten = 0L
+                                    var read: Long
+                                    while (source.read(sink.buffer, 8192).also { read = it } != -1L) {
+                                        totalWritten += read
+                                        _uploadState.value = UploadState.Uploading(totalWritten.toFloat() / originalSize)
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
 
                 // Start Upload
                 _uploadState.value = UploadState.Uploading(0f)
                 val apiService = createApiService(baseUrl)
                 
-                val requestFile = object : RequestBody() {
-                    override fun contentType() = "application/octet-stream".toMediaTypeOrNull()
-                    override fun contentLength() = uploadFile.length()
-                    override fun writeTo(sink: BufferedSink) {
-                        uploadFile.source().use { source ->
-                            var totalWritten = 0L
-                            var read: Long
-                            while (source.read(sink.buffer, 8192).also { read = it } != -1L) {
-                                totalWritten += read
-                                _uploadState.value = UploadState.Uploading(totalWritten.toFloat() / uploadFile.length())
-                            }
-                        }
-                    }
-                }
-
                 val body = MultipartBody.Part.createFormData("f", fileName, requestFile)
                 val response = apiService.uploadFile(encrypt, body)
 
@@ -147,10 +151,11 @@ class UploadViewModel(private val repository: SettingsRepository) : ViewModel() 
                         _uploadState.value = UploadState.Error("Failed to parse file ID from response: $responseText")
                     }
                 } else {
-                    _uploadState.value = UploadState.Error("Upload failed: ${response.code()}")
+                    val error = response.errorBody()?.string() ?: "Upload failed: ${response.code()}"
+                    _uploadState.value = UploadState.Error(error)
                 }
                 
-                uploadFile.delete()
+                tempEncryptedFile?.delete()
 
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -160,11 +165,20 @@ class UploadViewModel(private val repository: SettingsRepository) : ViewModel() 
     }
 
     private fun extractFileId(body: String): String? {
-        val marker = "File ID for downloading is "
-        val start = body.indexOf(marker)
-        if (start == -1) return null
-        val after = body.substring(start + marker.length)
-        return after.takeWhile { it.isLetterOrDigit() }
+        val markers = listOf(
+            "File ID for downloading is ",
+            "File ID is "
+        )
+        
+        for (marker in markers) {
+            val start = body.indexOf(marker)
+            if (start != -1) {
+                val after = body.substring(start + marker.length).trim()
+                val id = after.takeWhile { it.isLetterOrDigit() }
+                if (id.isNotEmpty()) return id
+            }
+        }
+        return null
     }
 
     private fun getFileName(context: Context, uri: Uri): String? {

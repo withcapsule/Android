@@ -65,6 +65,7 @@ dependencies {
     implementation(libs.qrose)
     implementation(libs.retrofit)
     implementation(libs.retrofit.scalars)
+    implementation(libs.retrofit.kotlinx.serialization)
     implementation(libs.okhttp)
     implementation(libs.okhttp.logging)
     implementation(libs.androidx.compose.material.icons.extended)

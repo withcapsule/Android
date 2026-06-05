@@ -1,9 +1,18 @@
 package com.sean.capsule.data.remote
 
+import kotlinx.serialization.Serializable
 import okhttp3.MultipartBody
 import okhttp3.ResponseBody
 import retrofit2.Response
 import retrofit2.http.*
+
+@Serializable
+data class FileStatus(
+    val file_name: String = "Unknown",
+    val file_size: Long = 0,
+    val time_remaining: Long = 0,
+    val is_encrypted: Boolean = false
+)
 
 interface ApiService {
     @GET("ping")
@@ -21,7 +30,7 @@ interface ApiService {
     ): Response<ResponseBody>
 
     @GET("status/{id}")
-    suspend fun getFileStatus(@Path("id") id: String): Response<ResponseBody>
+    suspend fun getFileStatus(@Path("id") id: String): Response<FileStatus>
 
     @GET("delete/{id}")
     suspend fun deleteFile(@Path("id") id: String): Response<ResponseBody>
