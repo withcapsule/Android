@@ -3,11 +3,8 @@ package com.sean.capsule.ui.screens
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.*
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -28,11 +25,14 @@ import androidx.compose.ui.unit.sp
 import com.sean.capsule.ui.viewmodel.SettingsViewModel
 import com.sean.capsule.ui.viewmodel.UploadState
 import com.sean.capsule.ui.viewmodel.UploadViewModel
+import io.github.alexzhirkevich.qrose.options.*
+import io.github.alexzhirkevich.qrose.rememberQrCodePainter
 
 @Composable
 fun UploadScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewModel, uploadViewModel: UploadViewModel) {
     var isEncrypted by remember { mutableStateOf(false) }
     var selectedFileUri by remember { mutableStateOf<Uri?>(null) }
+    var showQrDialog by remember { mutableStateOf(false) }
     val scrollState = rememberScrollState()
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
@@ -220,14 +220,57 @@ fun UploadScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewMo
                                 }
                             }
 
-                            Button(
-                                onClick = { 
-                                    uploadViewModel.resetState() 
-                                    selectedFileUri = null
-                                },
-                                modifier = Modifier.padding(top = 8.dp).align(Alignment.End)
+                            Row(
+                                modifier = Modifier.padding(top = 8.dp).align(Alignment.End),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                Text("Done")
+                                TextButton(
+                                    onClick = { showQrDialog = true }
+                                ) {
+                                    Text("Show QR")
+                                }
+                                Button(
+                                    onClick = { 
+                                        uploadViewModel.resetState() 
+                                        selectedFileUri = null
+                                    }
+                                ) {
+                                    Text("Done")
+                                }
+                            }
+
+                            if (showQrDialog) {
+                                AlertDialog(
+                                    onDismissRequest = { showQrDialog = false },
+                                    confirmButton = {
+                                        TextButton(onClick = { showQrDialog = false }) {
+                                            Text("Close")
+                                        }
+                                    },
+                                    title = { Text("Scan to Receive") },
+                                    text = {
+                                        Box(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Image(
+                                                painter = rememberQrCodePainter(
+                                                    data = state.downloadUrl,
+                                                    shapes = QrShapes(
+                                                        ball = QrBallShape.roundCorners(.25f),
+                                                        darkPixel = QrPixelShape.roundCorners(.5f),
+                                                        frame = QrFrameShape.roundCorners(.25f)
+                                                    ),
+                                                    colors = QrColors(
+                                                        dark = QrBrush.solid(MaterialTheme.colorScheme.primary)
+                                                    )
+                                                ),
+                                                contentDescription = "QR Code",
+                                                modifier = Modifier.size(200.dp)
+                                            )
+                                        }
+                                    }
+                                )
                             }
                         }
                     }
