@@ -10,6 +10,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -25,13 +26,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.sean.capsule.data.local.HistoryEntry
 import com.sean.capsule.data.remote.ApiService
+import com.sean.capsule.data.remote.RetrofitClient
 import com.sean.capsule.ui.viewmodel.SettingsViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import okhttp3.OkHttpClient
-import okhttp3.logging.HttpLoggingInterceptor
 import org.json.JSONObject
-import retrofit2.Retrofit
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -53,7 +52,11 @@ fun HistoryScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewM
     var isLoadingStatus by remember { mutableStateOf(false) }
     var statusError by remember { mutableStateOf<String?>(null) }
 
-    var itemToDelete by remember { mutableStateOf<HistoryEntry?>(null) }
+    var itemToDeleteId by rememberSaveable { mutableStateOf<String?>(null) }
+    var deleteDirection by rememberSaveable { mutableStateOf<SwipeToDismissBoxValue?>(null) }
+    val itemToDelete = remember(itemToDeleteId, history) {
+        history.find { it.id == itemToDeleteId }
+    }
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -98,78 +101,89 @@ fun HistoryScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewM
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     history.forEach { entry ->
-                        val swipeToDismissState = rememberSwipeToDismissBoxState(
-                            confirmValueChange = { value ->
-                                if (value == SwipeToDismissBoxValue.StartToEnd || value == SwipeToDismissBoxValue.EndToStart) {
-                                    itemToDelete = entry
-                                    false
-                                } else {
-                                    false
-                                }
-                            }
-                        )
-
-                        SwipeToDismissBox(
-                            state = swipeToDismissState,
-                            backgroundContent = {
-                                val color = MaterialTheme.colorScheme.errorContainer
-                                val alignment = if (swipeToDismissState.dismissDirection == SwipeToDismissBoxValue.StartToEnd) Alignment.CenterStart else Alignment.CenterEnd
-                                val icon = Icons.Default.Delete
-
-                                Box(
-                                    Modifier
-                                        .fillMaxSize()
-                                        .background(color, shape = MaterialTheme.shapes.medium)
-                                        .padding(horizontal = 20.dp),
-                                    contentAlignment = alignment
-                                ) {
-                                    Icon(
-                                        icon,
-                                        contentDescription = "Delete",
-                                        tint = MaterialTheme.colorScheme.error
-                                    )
-                                }
-                            },
-                            enableDismissFromStartToEnd = true,
-                            enableDismissFromEndToStart = true
-                        ) {
-                            HistoryItem(
-                                entry = entry,
-                                onInfoClick = {
-                                    selectedId = entry.id
-                                    showStatusDialog = true
-                                    isLoadingStatus = true
-                                    statusError = null
-                                    selectedStatusJson = null
-                                    
-                                    coroutineScope.launch {
-                                        try {
-                                            val apiService = createTempApiService(baseUrl)
-                                            val response = apiService.getFileStatus(entry.id)
-                                            if (response.isSuccessful) {
-                                                val body = response.body()?.string()
-                                                if (body != null) {
-                                                    selectedStatusJson = JSONObject(body)
-                                                } else {
-                                                    statusError = "Empty response from server"
-                                                }
-                                            } else {
-                                                val code = response.code();
-                                                statusError = if ( code == 404 ) {
-                                                    "File not found on server. Either it expired or it was deleted. (Error code 404)"
-                                                } else {
-                                                    "Server returned $code"
-                                                }
-
-                                            }
-                                        } catch (e: Exception) {
-                                            statusError = e.message ?: "Unknown error"
-                                        } finally {
-                                            isLoadingStatus = false
-                                        }
+                        key(entry.id) {
+                            val isBeingDeleted = itemToDeleteId == entry.id
+                            val swipeToDismissState = rememberSwipeToDismissBoxState(
+                                initialValue = if (isBeingDeleted) (deleteDirection ?: SwipeToDismissBoxValue.EndToStart) else SwipeToDismissBoxValue.Settled,
+                                confirmValueChange = { value ->
+                                    if (value != SwipeToDismissBoxValue.Settled) {
+                                        itemToDeleteId = entry.id
+                                        deleteDirection = value
+                                        true
+                                    } else {
+                                        true
                                     }
                                 }
                             )
+
+                            LaunchedEffect(isBeingDeleted) {
+                                if (!isBeingDeleted && swipeToDismissState.currentValue != SwipeToDismissBoxValue.Settled) {
+                                    swipeToDismissState.reset()
+                                }
+                            }
+
+                            SwipeToDismissBox(
+                                state = swipeToDismissState,
+                                backgroundContent = {
+                                    val color = MaterialTheme.colorScheme.errorContainer
+                                    val alignment = if (swipeToDismissState.dismissDirection == SwipeToDismissBoxValue.StartToEnd) Alignment.CenterStart else Alignment.CenterEnd
+                                    val icon = Icons.Default.Delete
+
+                                    Box(
+                                        Modifier
+                                            .fillMaxSize()
+                                            .background(color, shape = MaterialTheme.shapes.medium)
+                                            .padding(horizontal = 20.dp),
+                                        contentAlignment = alignment
+                                    ) {
+                                        Icon(
+                                            icon,
+                                            contentDescription = "Delete",
+                                            tint = MaterialTheme.colorScheme.error
+                                        )
+                                    }
+                                },
+                                enableDismissFromStartToEnd = true,
+                                enableDismissFromEndToStart = true
+                            ) {
+                                HistoryItem(
+                                    entry = entry,
+                                    onInfoClick = {
+                                        selectedId = entry.id
+                                        showStatusDialog = true
+                                        isLoadingStatus = true
+                                        statusError = null
+                                        selectedStatusJson = null
+                                        
+                                        coroutineScope.launch {
+                                            try {
+                                                val apiService = RetrofitClient.getApiService(baseUrl)
+                                                val response = apiService.getFileStatus(entry.id)
+                                                if (response.isSuccessful) {
+                                                    val body = response.body()?.string()
+                                                    if (body != null) {
+                                                        selectedStatusJson = JSONObject(body)
+                                                    } else {
+                                                        statusError = "Empty response from server"
+                                                    }
+                                                } else {
+                                                    val code = response.code();
+                                                    statusError = if ( code == 404 ) {
+                                                        "File not found on server. Either it expired or it was deleted. (Error code 404)"
+                                                    } else {
+                                                        "Server returned $code"
+                                                    }
+
+                                                }
+                                            } catch (e: Exception) {
+                                                statusError = e.message ?: "Unknown error"
+                                            } finally {
+                                                isLoadingStatus = false
+                                            }
+                                        }
+                                    }
+                                )
+                            }
                         }
                     }
                 }
@@ -214,7 +228,7 @@ fun HistoryScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewM
 
     itemToDelete?.let { entry ->
         AlertDialog(
-            onDismissRequest = { itemToDelete = null },
+            onDismissRequest = { itemToDeleteId = null },
             title = { Text("Delete Entry") },
             text = { Text("What would you like to do with ${entry.fileName}?") },
             confirmButton = {
@@ -239,7 +253,8 @@ fun HistoryScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewM
                                         }
                                     }
                                 )
-                                itemToDelete = null
+                                itemToDeleteId = null
+                                deleteDirection = null
                             },
                             modifier = Modifier.fillMaxWidth(),
                             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
@@ -254,7 +269,8 @@ fun HistoryScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewM
                             coroutineScope.launch {
                                 snackbarHostState.showSnackbar("Removed from recents")
                             }
-                            itemToDelete = null
+                            itemToDeleteId = null
+                            deleteDirection = null
                         },
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
@@ -263,7 +279,10 @@ fun HistoryScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewM
                     }
 
                     TextButton(
-                        onClick = { itemToDelete = null },
+                        onClick = { 
+                            itemToDeleteId = null
+                            deleteDirection = null
+                        },
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Text("Cancel")
@@ -389,20 +408,6 @@ fun HistoryItem(entry: HistoryEntry, onInfoClick: () -> Unit) {
             }
         }
     }
-}
-
-private fun createTempApiService(baseUrl: String): ApiService {
-    val okHttpClient = OkHttpClient.Builder()
-        .addInterceptor(HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.HEADERS
-        })
-        .build()
-
-    return Retrofit.Builder()
-        .baseUrl(baseUrl.let { if (it.endsWith("/")) it else "$it/" })
-        .client(okHttpClient)
-        .build()
-        .create(ApiService::class.java)
 }
 
 private fun formatFileSize(size: Long): String {

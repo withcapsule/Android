@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.sean.capsule.data.local.HistoryEntry
 import com.sean.capsule.data.local.SettingsRepository
 import com.sean.capsule.data.remote.ApiService
+import com.sean.capsule.data.remote.RetrofitClient
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -14,9 +15,6 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import okhttp3.OkHttpClient
-import okhttp3.logging.HttpLoggingInterceptor
-import retrofit2.Retrofit
 import retrofit2.converter.scalars.ScalarsConverterFactory
 
 enum class ServerOption(val displayName: String, val baseUrl: String?) {
@@ -160,19 +158,7 @@ class SettingsViewModel(private val repository: SettingsRepository) : ViewModel(
             _pingResponse.value = null
             
             try {
-                val okHttpClient = OkHttpClient.Builder()
-                    .addInterceptor(HttpLoggingInterceptor().apply {
-                        level = HttpLoggingInterceptor.Level.BODY
-                    })
-                    .build()
-
-                val retrofit = Retrofit.Builder()
-                    .baseUrl(baseUrl.let { if (it.endsWith("/")) it else "$it/" })
-                    .client(okHttpClient)
-                    .addConverterFactory(ScalarsConverterFactory.create())
-                    .build()
-
-                val apiService = retrofit.create(ApiService::class.java)
+                val apiService = RetrofitClient.getApiService(baseUrl)
                 val response = apiService.ping()
                 _pingResponse.value = response
             } catch (e: Exception) {
@@ -202,18 +188,7 @@ class SettingsViewModel(private val repository: SettingsRepository) : ViewModel(
     fun deleteFileFromServer(fileId: String, onSuccess: () -> Unit, onError: (String) -> Unit) {
         viewModelScope.launch {
             try {
-                val okHttpClient = OkHttpClient.Builder()
-                    .addInterceptor(HttpLoggingInterceptor().apply {
-                        level = HttpLoggingInterceptor.Level.HEADERS
-                    })
-                    .build()
-
-                val retrofit = Retrofit.Builder()
-                    .baseUrl(effectiveBaseUrl.value.let { if (it.endsWith("/")) it else "$it/" })
-                    .client(okHttpClient)
-                    .build()
-
-                val apiService = retrofit.create(ApiService::class.java)
+                val apiService = RetrofitClient.getApiService(effectiveBaseUrl.value)
                 val response = apiService.deleteFile(fileId)
 
                 if (response.isSuccessful) {

@@ -12,6 +12,7 @@ import androidx.lifecycle.viewModelScope
 import com.sean.capsule.data.local.HistoryEntry
 import com.sean.capsule.data.local.SettingsRepository
 import com.sean.capsule.data.remote.ApiService
+import com.sean.capsule.data.remote.RetrofitClient
 import kage.Age
 import kage.Identity
 import kage.crypto.scrypt.ScryptIdentity
@@ -21,7 +22,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import java.io.File
@@ -168,18 +168,7 @@ class DownloadViewModel(private val repository: SettingsRepository) : ViewModel(
     }
 
     private fun createApiService(baseUrl: String): ApiService {
-        val okHttpClient = OkHttpClient.Builder()
-            .addInterceptor(HttpLoggingInterceptor().apply {
-                level = HttpLoggingInterceptor.Level.HEADERS
-            })
-            .build()
-
-        val retrofit = Retrofit.Builder()
-            .baseUrl(baseUrl.let { if (it.endsWith("/")) it else "$it/" })
-            .client(okHttpClient)
-            .build()
-
-        return retrofit.create(ApiService::class.java)
+        return RetrofitClient.getApiService(baseUrl)
     }
 
     private suspend fun saveToFileWithProgress(

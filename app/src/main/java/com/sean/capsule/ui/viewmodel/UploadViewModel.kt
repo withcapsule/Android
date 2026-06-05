@@ -8,6 +8,7 @@ import cash.z.ecc.android.bip39.Mnemonics
 import com.sean.capsule.data.local.HistoryEntry
 import com.sean.capsule.data.local.SettingsRepository
 import com.sean.capsule.data.remote.ApiService
+import com.sean.capsule.data.remote.RetrofitClient
 import kage.Age
 import kage.Recipient
 import kage.crypto.scrypt.ScryptRecipient
@@ -19,7 +20,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
 import okhttp3.MultipartBody
-import okhttp3.OkHttpClient
 import okhttp3.RequestBody
 import okhttp3.logging.HttpLoggingInterceptor
 import okio.BufferedSink
@@ -190,20 +190,7 @@ class UploadViewModel(private val repository: SettingsRepository) : ViewModel() 
     }
 
     private fun createApiService(baseUrl: String): ApiService {
-        val okHttpClient = OkHttpClient.Builder()
-            .addInterceptor(
-                HttpLoggingInterceptor().apply {
-                    level = HttpLoggingInterceptor.Level.HEADERS
-                }
-            )
-            .build()
-
-        val retrofit = Retrofit.Builder()
-            .baseUrl(baseUrl.let { if (it.endsWith("/")) it else "$it/" })
-            .client(okHttpClient)
-            .build()
-
-        return retrofit.create(ApiService::class.java)
+        return RetrofitClient.getApiService(baseUrl)
     }
 
     fun resetState() {
