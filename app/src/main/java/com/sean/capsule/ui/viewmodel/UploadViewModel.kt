@@ -64,7 +64,7 @@ class UploadViewModel(private val repository: SettingsRepository) : ViewModel() 
                     tempEncryptedFile = tempFile
                     
                     withContext(Dispatchers.IO) {
-                        System.gc() // Try to free up memory before SCrypt allocation
+                        System.gc()
                         val recipient = ScryptRecipient(generatedMnemonic.toByteArray())
                         
                         context.contentResolver.openInputStream(fileUri)?.use { inputStream ->
