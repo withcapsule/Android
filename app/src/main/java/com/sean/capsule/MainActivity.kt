@@ -45,6 +45,10 @@ import kotlinx.serialization.Serializable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
+import dev.appoutlet.umami.api.event
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     private lateinit var uploadViewModel: UploadViewModel
@@ -68,6 +72,10 @@ class MainActivity : ComponentActivity() {
         
         uploadViewModel = ViewModelProvider(this, viewModelFactory)[UploadViewModel::class.java]
         val settingsViewModel = ViewModelProvider(this, viewModelFactory)[SettingsViewModel::class.java]
+
+        CoroutineScope(Dispatchers.IO).launch {
+            analytics.event(url = "/", name = "app_launched")
+        }
 
         handleIntent(intent)
 
