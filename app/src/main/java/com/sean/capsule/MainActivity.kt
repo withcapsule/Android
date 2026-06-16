@@ -7,11 +7,13 @@ import android.os.Bundle
 import android.os.Build
 import android.os.Parcelable
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Download
@@ -56,7 +58,6 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
-        enableEdgeToEdge()
 
         val settingsRepository = SettingsRepository(this)
         val viewModelFactory = object : ViewModelProvider.Factory {
@@ -84,14 +85,27 @@ class MainActivity : ComponentActivity() {
             splashScreen.setKeepOnScreenCondition { !isReady }
 
             val themeMode by settingsViewModel.themeMode.collectAsState()
+            val darkTheme = when (themeMode) {
+                ThemeMode.LIGHT -> false
+                ThemeMode.DARK -> true
+                ThemeMode.SYSTEM -> isSystemInDarkTheme()
+            }
 
-            CapsuleTheme(
-                darkTheme = when (themeMode) {
-                    ThemeMode.LIGHT -> false
-                    ThemeMode.DARK -> true
-                    ThemeMode.SYSTEM -> androidx.compose.foundation.isSystemInDarkTheme()
-                }
-            ) {
+            DisposableEffect(darkTheme) {
+                enableEdgeToEdge(
+                    statusBarStyle = SystemBarStyle.auto(
+                        android.graphics.Color.TRANSPARENT,
+                        android.graphics.Color.TRANSPARENT,
+                    ) { darkTheme },
+                    navigationBarStyle = SystemBarStyle.auto(
+                        android.graphics.Color.TRANSPARENT,
+                        android.graphics.Color.TRANSPARENT,
+                    ) { darkTheme }
+                )
+                onDispose {}
+            }
+
+            CapsuleTheme(darkTheme = darkTheme) {
                 MainContent(settingsViewModel, uploadViewModel)
             }
         }
