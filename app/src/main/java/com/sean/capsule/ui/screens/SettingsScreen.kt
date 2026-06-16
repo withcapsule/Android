@@ -28,6 +28,7 @@ import com.sean.capsule.ui.viewmodel.SettingsViewModel
 import com.sean.capsule.ui.viewmodel.ServerOption
 import com.sean.capsule.ui.viewmodel.ThemeMode
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewModel) {
     val context = LocalContext.current
@@ -287,28 +288,22 @@ fun SettingsScreen(paddingValues: PaddingValues, settingsViewModel: SettingsView
                 modifier = Modifier.padding(bottom = 8.dp)
             )
 
-            ThemeMode.entries.forEach { mode ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(56.dp)
-                        .selectable(
-                            selected = (themeMode == mode),
-                            onClick = { settingsViewModel.setThemeMode(mode) },
-                            role = Role.RadioButton
-                        )
-                        .padding(horizontal = 16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    RadioButton(
-                        selected = (themeMode == mode),
-                        onClick = null
-                    )
-                    Text(
-                        text = mode.name.lowercase().replaceFirstChar { it.uppercase() },
-                        style = MaterialTheme.typography.bodyLarge,
-                        modifier = Modifier.padding(start = 16.dp)
-                    )
+            SingleChoiceSegmentedButtonRow(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                ThemeMode.entries.forEachIndexed { index, mode ->
+                    SegmentedButton(
+                        shape = SegmentedButtonDefaults.itemShape(index = index, count = ThemeMode.entries.size),
+                        onClick = { 
+                            settingsViewModel.setThemeMode(mode)
+                            if (hapticsEnabled) {
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                            }
+                        },
+                        selected = themeMode == mode
+                    ) {
+                        Text(mode.name.lowercase().replaceFirstChar { it.uppercase() })
+                    }
                 }
             }
         }
