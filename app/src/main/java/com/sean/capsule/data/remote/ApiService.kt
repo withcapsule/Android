@@ -32,6 +32,6 @@ interface ApiService {
     @GET("status/{id}")
     suspend fun getFileStatus(@Path("id") id: String): Response<FileStatus>
 
-    @GET("delete/{id}")
+    @DELETE("delete/{id}")
     suspend fun deleteFile(@Path("id") id: String): Response<ResponseBody>
 }
