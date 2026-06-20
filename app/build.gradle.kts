@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace = "com.sean.capsule"
+    namespace = "dev.withcapsule.android"
     compileSdk {
         version = release(36) {
             minorApiLevel = 1
@@ -13,7 +13,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.sean.capsule"
+        applicationId = "dev.withcapsule.android"
         minSdk = 29
         targetSdk = 36
         versionCode = 1

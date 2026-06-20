@@ -12,7 +12,7 @@ This is the Android client for Capsule. It provides a mobile interface for sendi
 
 ## Project details
 
-- package name: `com.sean.capsule`
+- package name: `dev.withcapsule.android`
 - minimum Android version: API 29
 - built with Kotlin, Jetpack Compose, Retrofit, CameraX, and DataStore
 
