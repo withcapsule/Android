@@ -28,6 +28,12 @@ import com.sean.capsule.ui.viewmodel.UploadViewModel
 import io.github.alexzhirkevich.qrose.options.*
 import io.github.alexzhirkevich.qrose.rememberQrCodePainter
 
+import com.sean.capsule.analytics
+import dev.appoutlet.umami.api.event
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+
 @Composable
 fun UploadScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewModel, uploadViewModel: UploadViewModel) {
     var isEncrypted by remember { mutableStateOf(false) }
@@ -55,8 +61,25 @@ fun UploadScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewMo
         contract = ActivityResultContracts.GetContent(),
         onResult = { uri ->
             selectedFileUri = uri
+            if (uri != null) {
+                CoroutineScope(Dispatchers.IO).launch {
+                    analytics.event(url = "/upload", name = "file_selected")
+                }
+            }
         }
     )
+
+    LaunchedEffect(uploadState) {
+        when (val state = uploadState) {
+            is UploadState.Success -> {
+                analytics.event(url = "/upload", name = "upload_success", data = mapOf("encrypted" to (state.mnemonic != null).toString()))
+            }
+            is UploadState.Error -> {
+                analytics.event(url = "/upload", name = "upload_error", data = mapOf("message" to state.message))
+            }
+            else -> {}
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -117,6 +140,9 @@ fun UploadScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewMo
                 enabled = uploadState is UploadState.Idle || uploadState is UploadState.Success || uploadState is UploadState.Error,
                 onCheckedChange = { 
                     isEncrypted = it 
+                    CoroutineScope(Dispatchers.IO).launch {
+                        analytics.event(url = "/upload", name = "encryption_toggled", data = mapOf("enabled" to it.toString()))
+                    }
                     if (hapticsEnabled) {
                         if (it) {
                             haptic.performHapticFeedback(HapticFeedbackType.LongPress)
@@ -141,6 +167,9 @@ fun UploadScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewMo
                 Button(
                     onClick = { 
                         selectedFileUri?.let { uri ->
+                            CoroutineScope(Dispatchers.IO).launch {
+                                analytics.event(url = "/upload", name = "upload_started", data = mapOf("encrypted" to isEncrypted.toString()))
+                            }
                             uploadViewModel.uploadFile(context, baseUrl, uri, isEncrypted)
                         }
                     },
@@ -183,6 +212,9 @@ fun UploadScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewMo
                                 Text("File ID: ${state.fileId}", fontSize = 14.sp, modifier = Modifier.weight(1f))
                                 IconButton(onClick = {
                                     clipboardManager.setText(AnnotatedString(state.fileId))
+                                    CoroutineScope(Dispatchers.IO).launch {
+                                        analytics.event(url = "/upload", name = "copy_file_id")
+                                    }
                                     if (hapticsEnabled) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                 }) {
                                     Icon(Icons.Default.ContentCopy, contentDescription = "Copy File ID", modifier = Modifier.size(16.dp))
@@ -197,6 +229,9 @@ fun UploadScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewMo
                                 Text("Link: ${state.downloadUrl}", fontSize = 12.sp, modifier = Modifier.weight(1f))
                                 IconButton(onClick = {
                                     clipboardManager.setText(AnnotatedString(state.downloadUrl))
+                                    CoroutineScope(Dispatchers.IO).launch {
+                                        analytics.event(url = "/upload", name = "copy_download_url")
+                                    }
                                     if (hapticsEnabled) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                 }) {
                                     Icon(Icons.Default.ContentCopy, contentDescription = "Copy Link", modifier = Modifier.size(16.dp))
@@ -213,6 +248,9 @@ fun UploadScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewMo
                                     Text(state.mnemonic, fontSize = 12.sp, modifier = Modifier.weight(1f))
                                     IconButton(onClick = {
                                         clipboardManager.setText(AnnotatedString(state.mnemonic))
+                                        CoroutineScope(Dispatchers.IO).launch {
+                                            analytics.event(url = "/upload", name = "copy_mnemonic")
+                                        }
                                         if (hapticsEnabled) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                     }) {
                                         Icon(Icons.Default.ContentCopy, contentDescription = "Copy Phrases", modifier = Modifier.size(16.dp))
@@ -226,14 +264,24 @@ fun UploadScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewMo
                             ) {
                                 if (state.mnemonic != null) {
                                     Button(
-                                        onClick = { qrDialogData = "Scan Decryption Phrases" to state.mnemonic },
+                                        onClick = { 
+                                            qrDialogData = "Scan Decryption Phrases" to state.mnemonic 
+                                            CoroutineScope(Dispatchers.IO).launch {
+                                                analytics.event(url = "/upload", name = "show_qr_mnemonic")
+                                            }
+                                        },
                                         modifier = Modifier.fillMaxWidth()
                                     ) {
                                         Text("Show Decryption QR Code")
                                     }
                                 }
                                 Button(
-                                    onClick = { qrDialogData = "Scan to Receive" to state.downloadUrl },
+                                    onClick = { 
+                                        qrDialogData = "Scan to Receive" to state.downloadUrl 
+                                        CoroutineScope(Dispatchers.IO).launch {
+                                            analytics.event(url = "/upload", name = "show_qr_download")
+                                        }
+                                    },
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
                                     Text("Show Download Link QR Code")

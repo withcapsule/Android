@@ -33,9 +33,29 @@ import com.sean.capsule.ui.components.LargeDropdownMenu
 import com.sean.capsule.ui.viewmodel.SettingsViewModel
 import com.sean.capsule.ui.viewmodel.ServerOption
 
+import com.sean.capsule.analytics
+import dev.appoutlet.umami.api.event
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+
 @Composable
 fun OnboardingScreen(settingsViewModel: SettingsViewModel) {
     var currentPage by remember { mutableIntStateOf(0) }
+
+    LaunchedEffect(currentPage) {
+        val pageName = when (currentPage) {
+            0 -> "onboarding_welcome"
+            1 -> "onboarding_server_config"
+            2 -> "onboarding_camera_permission"
+            3 -> "onboarding_download_folder"
+            4 -> "onboarding_completion"
+            else -> "onboarding_unknown"
+        }
+        CoroutineScope(Dispatchers.IO).launch {
+            analytics.event(url = "/onboarding", name = pageName)
+        }
+    }
 
     Surface(
         modifier = Modifier.fillMaxSize(),
@@ -275,6 +295,9 @@ fun ServerConfigPage(settingsViewModel: SettingsViewModel, onNext: () -> Unit) {
                 if (selectedOption == ServerOption.Custom) {
                     settingsViewModel.saveServerConfig()
                 }
+                CoroutineScope(Dispatchers.IO).launch {
+                    analytics.event(url = "/onboarding/server_config", name = "server_option_selected", data = mapOf("option" to selectedOption.name))
+                }
                 onNext()
             },
             modifier = Modifier.fillMaxWidth().height(56.dp).padding(0.dp, 12.dp, 0.dp, 0.dp),
@@ -416,7 +439,12 @@ fun CompletionPage(onFinish: () -> Unit) {
         )
         Spacer(modifier = Modifier.height(64.dp))
         Button(
-            onClick = onFinish,
+            onClick = {
+                CoroutineScope(Dispatchers.IO).launch {
+                    analytics.event(url = "/onboarding/completion", name = "onboarding_finished")
+                }
+                onFinish()
+            },
             modifier = Modifier.fillMaxWidth().height(56.dp)
         ) {
             Text("Enter App", fontSize = 18.sp)

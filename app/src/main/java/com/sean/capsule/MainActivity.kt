@@ -124,7 +124,12 @@ class MainActivity : ComponentActivity() {
                 @Suppress("DEPRECATION")
                 intent.getParcelableExtra<Parcelable>(Intent.EXTRA_STREAM) as? Uri
             }
-            uri?.let { uploadViewModel.setSharedFileUri(it) }
+            uri?.let { 
+                CoroutineScope(Dispatchers.IO).launch {
+                    analytics.event(url = "/", name = "shared_intent_received")
+                }
+                uploadViewModel.setSharedFileUri(it) 
+            }
         }
     }
 }

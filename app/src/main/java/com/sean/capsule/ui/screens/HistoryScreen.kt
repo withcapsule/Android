@@ -38,6 +38,12 @@ import java.util.Locale
 import kotlin.math.log10
 import kotlin.math.pow
 
+import com.sean.capsule.analytics
+import dev.appoutlet.umami.api.event
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistoryScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewModel) {
@@ -156,6 +162,9 @@ fun HistoryScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewM
                                     onInfoClick = {
                                         showStatusDialog = true
                                         settingsViewModel.fetchFileStatus(entry.id)
+                                        CoroutineScope(Dispatchers.IO).launch {
+                                            analytics.event(url = "/history", name = "view_file_status", data = mapOf("id" to entry.id))
+                                        }
                                     }
                                 )
                             }
@@ -169,7 +178,12 @@ fun HistoryScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewM
             Button(
                 modifier = Modifier.padding( 16.dp ),
                 enabled = history.isNotEmpty(),
-                onClick = { settingsViewModel.clearHistory() }
+                onClick = { 
+                    settingsViewModel.clearHistory() 
+                    CoroutineScope(Dispatchers.IO).launch {
+                        analytics.event(url = "/history", name = "clear_history")
+                    }
+                }
             ) {
                 Text( "Clear history" )
             }
@@ -221,6 +235,9 @@ fun HistoryScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewM
                         Button(
                             onClick = {
                                 val id = entry.id
+                                CoroutineScope(Dispatchers.IO).launch {
+                                    analytics.event(url = "/history", name = "delete_from_server", data = mapOf("id" to id))
+                                }
                                 settingsViewModel.deleteFileFromServer(
                                     fileId = id,
                                     onSuccess = {
@@ -247,6 +264,9 @@ fun HistoryScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewM
                     Button(
                         onClick = {
                             settingsViewModel.removeHistoryItem(entry.id)
+                            CoroutineScope(Dispatchers.IO).launch {
+                                analytics.event(url = "/history", name = "remove_from_recents", data = mapOf("id" to entry.id))
+                            }
                             coroutineScope.launch {
                                 snackbarHostState.showSnackbar("Removed from recents")
                             }
@@ -289,6 +309,9 @@ fun StatusContent(status: FileStatus, fileId: String, hapticsEnabled: Boolean) {
     Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         StatusRow("ID (tap to copy)", fileId, modifier = Modifier.clickable {
             clipboardManager.setText(AnnotatedString(fileId))
+            CoroutineScope(Dispatchers.IO).launch {
+                analytics.event(url = "/history", name = "copy_id_from_status")
+            }
             if (hapticsEnabled) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
             coroutineScope.launch {
                 showCopied = true

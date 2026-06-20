@@ -28,6 +28,12 @@ import com.sean.capsule.ui.viewmodel.SettingsViewModel
 import com.sean.capsule.ui.viewmodel.ServerOption
 import com.sean.capsule.ui.viewmodel.ThemeMode
 
+import com.sean.capsule.analytics
+import dev.appoutlet.umami.api.event
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewModel) {
@@ -64,6 +70,12 @@ fun SettingsScreen(paddingValues: PaddingValues, settingsViewModel: SettingsView
             }
         }
     )
+
+    LaunchedEffect(pingResponse) {
+        pingResponse?.let { response ->
+            analytics.event(url = "/settings", name = "ping_result", data = mapOf("success" to (!response.lowercase().contains("error")).toString()))
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -109,6 +121,9 @@ fun SettingsScreen(paddingValues: PaddingValues, settingsViewModel: SettingsView
                             selected = (option == selectedOption),
                             onClick = { 
                                 settingsViewModel.updateServerOption(option.name)
+                                CoroutineScope(Dispatchers.IO).launch {
+                                    analytics.event(url = "/settings", name = "server_option_changed", data = mapOf("option" to option.name))
+                                }
                             },
                             role = Role.RadioButton
                         )
@@ -164,6 +179,9 @@ fun SettingsScreen(paddingValues: PaddingValues, settingsViewModel: SettingsView
         Button(
             onClick = {
                 settingsViewModel.saveAndPingServer()
+                CoroutineScope(Dispatchers.IO).launch {
+                    analytics.event(url = "/settings", name = "ping_server", data = mapOf("option" to selectedOption.name))
+                }
                 if (hapticsEnabled) {
                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 }
@@ -223,16 +241,31 @@ fun SettingsScreen(paddingValues: PaddingValues, settingsViewModel: SettingsView
                 },
                 leadingContent = { Icon(Icons.Default.Folder, contentDescription = null) },
                 trailingContent = {
-                    TextButton(onClick = { folderLauncher.launch(null) }) {
+                    TextButton(onClick = { 
+                        CoroutineScope(Dispatchers.IO).launch {
+                            analytics.event(url = "/settings", name = "change_download_dir")
+                        }
+                        folderLauncher.launch(null) 
+                    }) {
                         Text("Change")
                     }
                 },
-                modifier = Modifier.clickable { folderLauncher.launch(null) }
+                modifier = Modifier.clickable { 
+                    CoroutineScope(Dispatchers.IO).launch {
+                        analytics.event(url = "/settings", name = "change_download_dir")
+                    }
+                    folderLauncher.launch(null) 
+                }
             )
             
             if (downloadDirUri != null) {
                 TextButton(
-                    onClick = { settingsViewModel.setDownloadDirUri(null) },
+                    onClick = { 
+                        settingsViewModel.setDownloadDirUri(null) 
+                        CoroutineScope(Dispatchers.IO).launch {
+                            analytics.event(url = "/settings", name = "reset_download_dir")
+                        }
+                    },
                     modifier = Modifier.padding(start = 16.dp)
                 ) {
                     Text("Reset to Default")
@@ -258,6 +291,9 @@ fun SettingsScreen(paddingValues: PaddingValues, settingsViewModel: SettingsView
                         onClick = { 
                             val newState = !hapticsEnabled
                             settingsViewModel.setHapticsEnabled(newState)
+                            CoroutineScope(Dispatchers.IO).launch {
+                                analytics.event(url = "/settings", name = "haptics_toggled", data = mapOf("enabled" to newState.toString()))
+                            }
                             if (newState) {
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                             } else {
@@ -296,6 +332,9 @@ fun SettingsScreen(paddingValues: PaddingValues, settingsViewModel: SettingsView
                         shape = SegmentedButtonDefaults.itemShape(index = index, count = ThemeMode.entries.size),
                         onClick = { 
                             settingsViewModel.setThemeMode(mode)
+                            CoroutineScope(Dispatchers.IO).launch {
+                                analytics.event(url = "/settings", name = "theme_changed", data = mapOf("mode" to mode.name))
+                            }
                             if (hapticsEnabled) {
                                 haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                             }

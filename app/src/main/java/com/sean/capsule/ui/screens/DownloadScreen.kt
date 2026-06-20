@@ -55,6 +55,12 @@ import com.sean.capsule.ui.viewmodel.DownloadViewModel
 import com.sean.capsule.ui.viewmodel.SettingsViewModel
 import java.util.concurrent.Executors
 
+import com.sean.capsule.analytics
+import dev.appoutlet.umami.api.event
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+
 enum class ScannerTarget {
     ID_URL, MNEMONIC
 }
@@ -85,6 +91,9 @@ fun DownloadScreen(
         navBackStackEntry?.savedStateHandle?.getStateFlow<String?>("scan_result", null)
             ?.collect { result ->
                 if (result != null) {
+                    CoroutineScope(Dispatchers.IO).launch {
+                        analytics.event(url = "/download", name = "qr_scanned", data = mapOf("target" to (pendingTarget?.name ?: "unknown")))
+                    }
                     if (pendingTarget == ScannerTarget.ID_URL) {
                         idOrUrl = result
                     } else if (pendingTarget == ScannerTarget.MNEMONIC) {
@@ -115,6 +124,21 @@ fun DownloadScreen(
             }
         }
     )
+
+    LaunchedEffect(downloadState) {
+        when (val state = downloadState) {
+            is DownloadState.Success -> {
+                analytics.event(url = "/download", name = "download_success")
+            }
+            is DownloadState.Error -> {
+                analytics.event(url = "/download", name = "download_error", data = mapOf("message" to state.message))
+            }
+            is DownloadState.Decrypting -> {
+                analytics.event(url = "/download", name = "decryption_required")
+            }
+            else -> {}
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -147,6 +171,9 @@ fun DownloadScreen(
         OutlinedButton(
             onClick = {
                 pendingTargetName = ScannerTarget.ID_URL.name
+                CoroutineScope(Dispatchers.IO).launch {
+                    analytics.event(url = "/download", name = "start_qr_scan", data = mapOf("target" to ScannerTarget.ID_URL.name))
+                }
                 if (hasCameraPermission.value) {
                     navController.navigate(QRScanner(ScannerTarget.ID_URL.name))
                 } else {
@@ -214,6 +241,9 @@ fun DownloadScreen(
                             trailingIcon = {
                                 IconButton(onClick = {
                                     pendingTargetName = ScannerTarget.MNEMONIC.name
+                                    CoroutineScope(Dispatchers.IO).launch {
+                                        analytics.event(url = "/download", name = "start_qr_scan", data = mapOf("target" to ScannerTarget.MNEMONIC.name))
+                                    }
                                     if (hasCameraPermission.value) {
                                         navController.navigate(QRScanner(ScannerTarget.MNEMONIC.name))
                                     } else {
@@ -232,6 +262,9 @@ fun DownloadScreen(
                             Spacer(modifier = Modifier.width(8.dp))
                             Button(
                                 onClick = { 
+                                    CoroutineScope(Dispatchers.IO).launch {
+                                        analytics.event(url = "/download", name = "decryption_started")
+                                    }
                                     downloadViewModel.decryptAndSave(context, state.tempFile, state.suggestedName, mnemonic, downloadDirUri)
                                     mnemonic = ""
                                 },
@@ -245,7 +278,12 @@ fun DownloadScreen(
             }
             else -> {
                 Button(
-                    onClick = { downloadViewModel.startDownload(context, baseUrl, idOrUrl, downloadDirUri) },
+                    onClick = { 
+                        CoroutineScope(Dispatchers.IO).launch {
+                            analytics.event(url = "/download", name = "download_started")
+                        }
+                        downloadViewModel.startDownload(context, baseUrl, idOrUrl, downloadDirUri) 
+                    },
                     modifier = Modifier.fillMaxWidth(),
                     enabled = idOrUrl.isNotBlank()
                 ) {
@@ -282,6 +320,9 @@ fun DownloadScreen(
                                 horizontalArrangement = Arrangement.End
                             ) {
                                 TextButton(onClick = {
+                                    CoroutineScope(Dispatchers.IO).launch {
+                                        analytics.event(url = "/download", name = "open_file")
+                                    }
                                     try {
                                         val intent = Intent(Intent.ACTION_VIEW).apply {
                                             setDataAndType(state.uri, context.contentResolver.getType(state.uri) ?: "*/*")
@@ -335,6 +376,12 @@ fun QRScannerScreen(
     onClose: () -> Unit
 ) {
     var hasScanned by remember { mutableStateOf(false) }
+
+    LaunchedEffect(Unit) {
+        CoroutineScope(Dispatchers.IO).launch {
+            analytics.event(url = "/qr_scanner", name = "qr_scanner_opened", data = mapOf("target" to target.name))
+        }
+    }
 
     Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
         QRScannerView(onCodeScanned = { result ->
