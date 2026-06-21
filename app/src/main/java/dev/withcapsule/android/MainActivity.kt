@@ -56,6 +56,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var uploadViewModel: UploadViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        analytics = AnalyticsManager(this)
         val splashScreen = installSplashScreen()
         super.onCreate(savedInstanceState)
 

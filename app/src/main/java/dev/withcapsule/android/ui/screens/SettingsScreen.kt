@@ -53,6 +53,7 @@ fun SettingsScreen(paddingValues: PaddingValues, settingsViewModel: SettingsView
     val protocols = listOf("https://", "http://")
     val scrollState = rememberScrollState()
     val hapticsEnabled by settingsViewModel.hapticsEnabled.collectAsState()
+    val anonymousAnalyticsEnabled by settingsViewModel.anonymousAnalyticsEnabled.collectAsState()
     val haptic = LocalHapticFeedback.current
 
     val pingResponse by settingsViewModel.pingResponse.collectAsState()
@@ -344,6 +345,54 @@ fun SettingsScreen(paddingValues: PaddingValues, settingsViewModel: SettingsView
                         Text(mode.name.lowercase().replaceFirstChar { it.uppercase() })
                     }
                 }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Text(
+                text = "Privacy",
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(56.dp)
+                    .selectable(
+                        selected = anonymousAnalyticsEnabled,
+                        onClick = {
+                            val newState = !anonymousAnalyticsEnabled
+                            if (!newState) {
+                                CoroutineScope(Dispatchers.IO).launch {
+                                    analytics.event(url = "/settings", name = "analytics_opt_out")
+                                }
+                            }
+                            settingsViewModel.setAnonymousAnalyticsEnabled(newState)
+                            if (hapticsEnabled) {
+                                if (newState) {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                } else {
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                }
+                            }
+                        },
+                        role = Role.Switch
+                    )
+                    .padding(horizontal = 16.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "Allow Anonymous Analytics",
+                    style = MaterialTheme.typography.bodyLarge,
+                    modifier = Modifier.weight(1f)
+                )
+                Switch(
+                    checked = anonymousAnalyticsEnabled,
+                    onCheckedChange = null
+                )
             }
         }
         

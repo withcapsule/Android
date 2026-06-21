@@ -33,6 +33,7 @@ class SettingsRepository(private val context: Context) {
         val DOWNLOAD_DIR_URI = stringPreferencesKey("download_dir_uri")
         val THEME_MODE = stringPreferencesKey("theme_mode")
         val HISTORY_JSON = stringPreferencesKey("history_json")
+        val ANONYMOUS_ANALYTICS_ENABLED = booleanPreferencesKey("anonymous_analytics_enabled")
     }
 
     val history: Flow<List<HistoryEntry>> = context.dataStore.data
@@ -80,6 +81,11 @@ class SettingsRepository(private val context: Context) {
             preferences[PreferencesKeys.CUSTOM_PROTOCOL_INDEX] ?: 0
         }
 
+    val anonymousAnalyticsEnabled: Flow<Boolean> = context.dataStore.data
+        .map { preferences ->
+            preferences[PreferencesKeys.ANONYMOUS_ANALYTICS_ENABLED] ?: true
+        }
+
     suspend fun updateHapticsEnabled(enabled: Boolean) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.HAPTICS_ENABLED] = enabled
@@ -123,6 +129,12 @@ class SettingsRepository(private val context: Context) {
     suspend fun updateThemeMode(mode: String) {
         context.dataStore.edit { preferences ->
             preferences[PreferencesKeys.THEME_MODE] = mode
+        }
+    }
+
+    suspend fun updateAnonymousAnalyticsEnabled(enabled: Boolean) {
+        context.dataStore.edit { preferences ->
+            preferences[PreferencesKeys.ANONYMOUS_ANALYTICS_ENABLED] = enabled
         }
     }
 

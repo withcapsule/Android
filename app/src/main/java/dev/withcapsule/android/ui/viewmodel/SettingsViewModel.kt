@@ -46,6 +46,9 @@ class SettingsViewModel(private val repository: SettingsRepository) : ViewModel(
     val history: StateFlow<List<HistoryEntry>> = repository.history
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
+    val anonymousAnalyticsEnabled: StateFlow<Boolean> = repository.anonymousAnalyticsEnabled
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), true)
+
     private val _serverOption = MutableStateFlow("Default")
     val serverOption: StateFlow<String> = _serverOption.asStateFlow()
 
@@ -125,6 +128,12 @@ class SettingsViewModel(private val repository: SettingsRepository) : ViewModel(
     fun setThemeMode(mode: ThemeMode) {
         viewModelScope.launch {
             repository.updateThemeMode(mode.name)
+        }
+    }
+
+    fun setAnonymousAnalyticsEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            repository.updateAnonymousAnalyticsEnabled(enabled)
         }
     }
 
