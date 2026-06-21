@@ -22,8 +22,6 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import okhttp3.logging.HttpLoggingInterceptor
-import retrofit2.Retrofit
 import java.io.File
 import java.io.FileOutputStream
 import java.io.InputStream

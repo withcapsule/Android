@@ -4,19 +4,16 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import dev.withcapsule.android.data.local.HistoryEntry
 import dev.withcapsule.android.data.local.SettingsRepository
-import dev.withcapsule.android.data.remote.ApiService
 import dev.withcapsule.android.data.remote.FileStatus
 import dev.withcapsule.android.data.remote.RetrofitClient
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
-import retrofit2.converter.scalars.ScalarsConverterFactory
 
 enum class ServerOption(val displayName: String, val baseUrl: String?) {
     Default("Default (https://send.withcapsule.dev)", "https://send.withcapsule.dev"),
