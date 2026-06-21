@@ -1,17 +1,23 @@
 package dev.withcapsule.android.ui.screens
 
 import android.Manifest
+import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CaptureRequest
+import android.net.Uri
+import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.OptIn
 import androidx.camera.camera2.interop.Camera2CameraInfo
 import androidx.camera.camera2.interop.Camera2Interop
 import androidx.camera.camera2.interop.ExperimentalCamera2Interop
-import androidx.camera.core.*
+import androidx.camera.core.CameraSelector
+import androidx.camera.core.ExperimentalGetImage
+import androidx.camera.core.ImageAnalysis
+import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.animation.AnimatedVisibility
@@ -20,46 +26,77 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.safeDrawing
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.QrCodeScanner
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalFocusManager
-import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.navigation.NavController
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions
 import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
 import dev.withcapsule.android.QRScanner
+import dev.withcapsule.android.analytics
 import dev.withcapsule.android.ui.viewmodel.DownloadState
 import dev.withcapsule.android.ui.viewmodel.DownloadViewModel
 import dev.withcapsule.android.ui.viewmodel.SettingsViewModel
-import java.util.concurrent.Executors
-
-import dev.withcapsule.android.analytics
-import dev.appoutlet.umami.api.event
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import java.util.concurrent.Executors
 
 enum class ScannerTarget {
     ID_URL, MNEMONIC
@@ -83,47 +120,29 @@ fun DownloadScreen(
     val baseUrl by settingsViewModel.effectiveBaseUrl.collectAsState()
     val downloadDirUri by settingsViewModel.downloadDirUri.collectAsState()
     val downloadState by downloadViewModel.downloadState.collectAsState()
-    val focusManager = LocalFocusManager.current
 
-    val navBackStackEntry = navController.currentBackStackEntry
+    val scanResult = navController.currentBackStackEntry
+        ?.savedStateHandle
+        ?.getStateFlow<String?>("scan_result", null)
+        ?.collectAsState()
 
-    LaunchedEffect(navBackStackEntry) {
-        navBackStackEntry?.savedStateHandle?.getStateFlow<String?>("scan_result", null)
-            ?.collect { result ->
-                if (result != null) {
-                    CoroutineScope(Dispatchers.IO).launch {
-                        analytics.event(url = "/download", name = "qr_scanned", data = mapOf("target" to (pendingTarget?.name ?: "unknown")))
-                    }
-                    if (pendingTarget == ScannerTarget.ID_URL) {
-                        idOrUrl = result
-                    } else if (pendingTarget == ScannerTarget.MNEMONIC) {
-                        mnemonic = result
-                    }
-                    pendingTargetName = null
-                    // Clear the result so it doesn't trigger again on next entry
-                    navBackStackEntry.savedStateHandle.remove<String>("scan_result")
+    LaunchedEffect(scanResult?.value) {
+        scanResult?.value?.let { result ->
+            when (pendingTarget) {
+                ScannerTarget.ID_URL -> {
+                    idOrUrl = result
+                    analytics.event(url = "/download", name = "qr_scanned", data = mapOf("target" to (pendingTarget?.name ?: "unknown")))
                 }
+                ScannerTarget.MNEMONIC -> {
+                    mnemonic = result
+                    analytics.event(url = "/download", name = "qr_scanned", data = mapOf("target" to (pendingTarget?.name ?: "unknown")))
+                }
+                null -> {}
             }
-    }
-
-    val hasCameraPermission = remember {
-        mutableStateOf(
-            ContextCompat.checkSelfPermission(
-                context,
-                Manifest.permission.CAMERA
-            ) == PackageManager.PERMISSION_GRANTED
-        )
-    }
-
-    val launcher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestPermission(),
-        onResult = { granted ->
-            hasCameraPermission.value = granted
-            if (granted && pendingTargetName != null) {
-                navController.navigate(QRScanner(pendingTargetName!!))
-            }
+            pendingTargetName = null
+            navController.currentBackStackEntry?.savedStateHandle?.remove<String>("scan_result")
         }
-    )
+    }
 
     LaunchedEffect(downloadState) {
         when (val state = downloadState) {
@@ -154,7 +173,7 @@ fun DownloadScreen(
         Icon(
             imageVector = Icons.Default.Download,
             contentDescription = "Receive",
-            modifier = Modifier.size(80.dp),
+            modifier = Modifier.size(100.dp),
             tint = MaterialTheme.colorScheme.primary
         )
         
@@ -168,201 +187,133 @@ fun DownloadScreen(
         
         Spacer(modifier = Modifier.height(32.dp))
 
-        OutlinedButton(
-            onClick = {
-                pendingTargetName = ScannerTarget.ID_URL.name
-                CoroutineScope(Dispatchers.IO).launch {
-                    analytics.event(url = "/download", name = "start_qr_scan", data = mapOf("target" to ScannerTarget.ID_URL.name))
-                }
-                if (hasCameraPermission.value) {
-                    navController.navigate(QRScanner(ScannerTarget.ID_URL.name))
-                } else {
-                    launcher.launch(Manifest.permission.CAMERA)
-                }
-            },
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Icon(Icons.Default.QrCodeScanner, contentDescription = null)
-            Spacer(Modifier.width(8.dp))
-            Text("Scan ID/URL QR Code")
-        }
-        
-        Spacer(modifier = Modifier.height(16.dp))
-        
         OutlinedTextField(
             value = idOrUrl,
             onValueChange = { idOrUrl = it },
-            label = { Text("Enter ID or URL") },
+            label = { Text("File ID or Download URL") },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
-            enabled = downloadState is DownloadState.Idle || downloadState is DownloadState.Success || downloadState is DownloadState.Error
+            trailingIcon = {
+                IconButton(onClick = {
+                    pendingTargetName = ScannerTarget.ID_URL.name
+                    analytics.event(url = "/download", name = "start_qr_scan", data = mapOf("target" to ScannerTarget.ID_URL.name))
+                    navController.navigate(QRScanner(target = ScannerTarget.ID_URL.name))
+                }) {
+                    Icon(Icons.Default.QrCodeScanner, contentDescription = "Scan QR")
+                }
+            },
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
         )
-        
-        Spacer(modifier = Modifier.height(24.dp))
 
-        when (val state = downloadState) {
-            is DownloadState.Downloading -> {
-                DownloadProgress(label = "Receiving...", progress = state.progress)
-            }
-            is DownloadState.Decrypting -> {
-                DownloadProgress(label = "Decrypting...", progress = state.progress)
-                
-                Spacer(modifier = Modifier.height(24.dp))
-                
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Text(
-                            text = "Decryption Required",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold
-                        )
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = "This file is encrypted. Please enter your 12-word mnemonic phrase to proceed:",
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        OutlinedTextField(
-                            value = mnemonic,
-                            onValueChange = { mnemonic = it },
-                            label = { Text("Mnemonic Phrase") },
-                            modifier = Modifier.fillMaxWidth(),
-                            minLines = 2,
-                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                            keyboardActions = KeyboardActions(
-                                onDone = {
-                                    mnemonic = mnemonic.lowercase().trim().replace("\\s+".toRegex(), " ")
-                                    focusManager.clearFocus()
-                                }
-                            ),
-                            trailingIcon = {
-                                IconButton(onClick = {
-                                    pendingTargetName = ScannerTarget.MNEMONIC.name
-                                    CoroutineScope(Dispatchers.IO).launch {
+        Spacer(modifier = Modifier.height(16.dp))
+
+        Button(
+            onClick = {
+                downloadViewModel.startDownload(context, baseUrl, idOrUrl, downloadDirUri)
+                CoroutineScope(Dispatchers.IO).launch {
+                    analytics.event(url = "/download", name = "download_started")
+                }
+            },
+            modifier = Modifier.fillMaxWidth(),
+            enabled = idOrUrl.isNotBlank() && downloadState is DownloadState.Idle
+        ) {
+            Text("Download")
+        }
+
+        Spacer(modifier = Modifier.height(32.dp))
+
+        AnimatedVisibility(
+            visible = downloadState !is DownloadState.Idle,
+            enter = expandVertically() + fadeIn(),
+            exit = shrinkVertically() + fadeOut()
+        ) {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                when (val state = downloadState) {
+                    is DownloadState.Downloading -> {
+                        DownloadProgress("Downloading...", state.progress)
+                    }
+                    is DownloadState.Decrypting -> {
+                        Column(modifier = Modifier.fillMaxWidth()) {
+                            DownloadProgress("Decrypting...", state.progress)
+                            Spacer(modifier = Modifier.height(16.dp))
+                            OutlinedTextField(
+                                value = mnemonic,
+                                onValueChange = { mnemonic = it },
+                                label = { Text("Mnemonic Phrase (Age)") },
+                                modifier = Modifier.fillMaxWidth(),
+                                trailingIcon = {
+                                    IconButton(onClick = {
+                                        pendingTargetName = ScannerTarget.MNEMONIC.name
                                         analytics.event(url = "/download", name = "start_qr_scan", data = mapOf("target" to ScannerTarget.MNEMONIC.name))
+                                        navController.navigate(QRScanner(target = ScannerTarget.MNEMONIC.name))
+                                    }) {
+                                        Icon(Icons.Default.QrCodeScanner, contentDescription = "Scan QR")
                                     }
-                                    if (hasCameraPermission.value) {
-                                        navController.navigate(QRScanner(ScannerTarget.MNEMONIC.name))
-                                    } else {
-                                        launcher.launch(Manifest.permission.CAMERA)
-                                    }
-                                }) {
-                                    Icon(Icons.Default.QrCodeScanner, contentDescription = "Scan Mnemonic")
                                 }
-                            }
-                        )
-                        Spacer(modifier = Modifier.height(16.dp))
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                            TextButton(onClick = { downloadViewModel.resetState() }) {
-                                Text("Cancel")
-                            }
-                            Spacer(modifier = Modifier.width(8.dp))
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
                             Button(
-                                onClick = { 
+                                onClick = {
+                                    downloadViewModel.decryptAndSave(context, state.tempFile, state.suggestedName, mnemonic, downloadDirUri)
                                     CoroutineScope(Dispatchers.IO).launch {
                                         analytics.event(url = "/download", name = "decryption_started")
                                     }
-                                    downloadViewModel.decryptAndSave(context, state.tempFile, state.suggestedName, mnemonic, downloadDirUri)
-                                    mnemonic = ""
                                 },
-                                enabled = mnemonic.isNotBlank() && state.progress == 0f
+                                modifier = Modifier.fillMaxWidth(),
+                                enabled = mnemonic.isNotBlank()
                             ) {
-                                Text("Decrypt & Save")
+                                Text("Decrypt and Save")
                             }
                         }
                     }
-                }
-            }
-            else -> {
-                Button(
-                    onClick = { 
-                        CoroutineScope(Dispatchers.IO).launch {
-                            analytics.event(url = "/download", name = "download_started")
-                        }
-                        downloadViewModel.startDownload(context, baseUrl, idOrUrl, downloadDirUri) 
-                    },
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = idOrUrl.isNotBlank()
-                ) {
-                    Text("Receive")
-                }
-            }
-        }
-
-        AnimatedVisibility(
-            visible = downloadState is DownloadState.Success || downloadState is DownloadState.Error,
-            enter = fadeIn() + expandVertically(),
-            exit = fadeOut() + shrinkVertically()
-        ) {
-            val state = downloadState
-            Column {
-                Spacer(modifier = Modifier.height(16.dp))
-                if (state is DownloadState.Success) {
-                    Card(
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.secondaryContainer
-                        ),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Text(
-                                "Receive Success!",
-                                fontWeight = FontWeight.Bold, 
-                                color = MaterialTheme.colorScheme.onSecondaryContainer
-                            )
-                            Text("Saved: ${state.fileName}", fontSize = 12.sp)
-                            
-                            Row(
-                                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                                horizontalArrangement = Arrangement.End
-                            ) {
-                                TextButton(onClick = {
-                                    CoroutineScope(Dispatchers.IO).launch {
-                                        analytics.event(url = "/download", name = "open_file")
-                                    }
-                                    try {
+                    is DownloadState.Success -> {
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Text("Success", fontWeight = FontWeight.Bold)
+                                Text("File saved: ${state.fileName}", fontSize = 12.sp)
+                                Button(
+                                    onClick = {
                                         val intent = Intent(Intent.ACTION_VIEW).apply {
-                                            setDataAndType(state.uri, context.contentResolver.getType(state.uri) ?: "*/*")
+                                            setDataAndType(state.uri, "application/octet-stream")
                                             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                                         }
                                         context.startActivity(Intent.createChooser(intent, "Open file"))
-                                    } catch (e: Exception) {
-                                        e.printStackTrace()
-                                    }
-                                }) {
+                                        CoroutineScope(Dispatchers.IO).launch {
+                                            analytics.event(url = "/download", name = "open_file")
+                                        }
+                                    },
+                                    modifier = Modifier.padding(top = 8.dp)
+                                ) {
                                     Text("Open File")
                                 }
-                                
-                                Spacer(modifier = Modifier.width(8.dp))
-                                
-                                Button(
-                                    onClick = { downloadViewModel.resetState() }
-                                ) {
-                                    Text("OK")
+                                TextButton(onClick = { downloadViewModel.resetState() }) {
+                                    Text("Done")
                                 }
                             }
                         }
                     }
-                } else if (state is DownloadState.Error) {
-                    Card(
-                        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Text("Error", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
-                            Text(state.message, fontSize = 12.sp)
-                            Button(
-                                onClick = { downloadViewModel.resetState() },
-                                modifier = Modifier.padding(top = 8.dp),
-                                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
-                            ) {
-                                Text("Dismiss")
+                    is DownloadState.Error -> {
+                        Card(
+                            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Column(modifier = Modifier.padding(16.dp)) {
+                                Text("Error", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
+                                Text(state.message, fontSize = 12.sp)
+                                Button(
+                                    onClick = { downloadViewModel.resetState() },
+                                    modifier = Modifier.padding(top = 8.dp),
+                                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                                ) {
+                                    Text("Dismiss")
+                                }
                             }
                         }
                     }
+                    else -> {}
                 }
             }
         }
@@ -375,6 +326,51 @@ fun QRScannerScreen(
     onResult: (String) -> Unit,
     onClose: () -> Unit
 ) {
+    val context = LocalContext.current
+    var hasPermission by remember {
+        mutableStateOf(
+            ContextCompat.checkSelfPermission(
+                context,
+                Manifest.permission.CAMERA
+            ) == PackageManager.PERMISSION_GRANTED
+        )
+    }
+    var showPermissionDeniedDialog by remember { mutableStateOf(false) }
+
+    val launcher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        hasPermission = isGranted
+        if (!isGranted) {
+            val activity = context as? Activity
+            if (activity != null && !ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.CAMERA)) {
+                showPermissionDeniedDialog = true
+            }
+        }
+    }
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME) {
+                hasPermission = ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.CAMERA
+                ) == PackageManager.PERMISSION_GRANTED
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        if (!hasPermission) {
+            launcher.launch(Manifest.permission.CAMERA)
+        }
+    }
+
     var hasScanned by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
@@ -383,13 +379,63 @@ fun QRScannerScreen(
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
-        QRScannerView(onCodeScanned = { result ->
-            if (!hasScanned) {
-                hasScanned = true
-                onResult(result)
+    if (showPermissionDeniedDialog) {
+        AlertDialog(
+            onDismissRequest = { showPermissionDeniedDialog = false },
+            title = { Text("Camera Permission Required") },
+            text = { Text("Android only allows an app to request camera access two times. To allow camera access, please enable it in the App Info page.") },
+            confirmButton = {
+                TextButton(onClick = {
+                    showPermissionDeniedDialog = false
+                    android.widget.Toast.makeText(context, "Enable camera under \"Permissions\"", android.widget.Toast.LENGTH_LONG).show()
+                    val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                        data = Uri.fromParts("package", context.packageName, null)
+                    }
+                    context.startActivity(intent)
+                }) {
+                    Text("App Info")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showPermissionDeniedDialog = false }) {
+                    Text("Close")
+                }
             }
-        })
+        )
+    }
+
+    Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+        if (hasPermission) {
+            QRScannerView(onCodeScanned = { result ->
+                if (!hasScanned) {
+                    hasScanned = true
+                    onResult(result)
+                }
+            })
+        } else {
+            Column(
+                modifier = Modifier.fillMaxSize().padding(32.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(
+                    "Camera permission is required to scan QR codes.",
+                    color = Color.White,
+                    textAlign = TextAlign.Center
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+                Button(onClick = { 
+                    val activity = context as? Activity
+                    if (activity != null && !ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.CAMERA)) {
+                        showPermissionDeniedDialog = true
+                    } else {
+                        launcher.launch(Manifest.permission.CAMERA)
+                    }
+                }) {
+                    Text("Grant Permission")
+                }
+            }
+        }
 
         Box(
             modifier = Modifier

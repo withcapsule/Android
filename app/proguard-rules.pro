@@ -5,6 +5,18 @@
 # For more details, see
 #   http://developer.android.com/guide/developing/tools/proguard.html
 
+-keepattributes *Annotation*, EnclosingMethod, InnerClasses
+-keep,allowobfuscation,allowshrinking class kotlinx.serialization.json.** { *; }
+
+-keepclassmembers class dev.withcapsule.android.data.** {
+    *** get*();
+    *** set*();
+}
+
+-keepclassmembers class * {
+    @kotlinx.serialization.Serializable *;
+}
+
 # If your project uses WebView with JS, uncomment the following
 # and specify the fully qualified class name to the JavaScript interface
 # class:
