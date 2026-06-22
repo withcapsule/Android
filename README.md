@@ -1,45 +1,22 @@
-# Capsule Android
+# Capsule for Android
 
-This is the Android client for Capsule. It provides a mobile interface for sending files, receiving files by ID or QR code, and working with locally encrypted transfers.
+The Android client for **Capsule**, a privacy-friendly file-transfer app. Send and receive files (by ID or QR code), with optional on-device end-to-end encryption.
 
-## Features
+- **Package:** `dev.withcapsule.android`
+- **Min SDK:** 29 · **Target SDK:** 36
+- Built with Kotlin, Jetpack Compose, Retrofit, CameraX, and DataStore.
 
-- upload files to a Capsule server
-- download files by ID or scanned QR code
-- optional client-side encryption and decryption
-- recent transfer history
-- configurable server address for self-hosting
+## Building
 
-## Project details
-
-- package name: `dev.withcapsule.android`
-- minimum Android version: API 29
-- built with Kotlin, Jetpack Compose, Retrofit, CameraX, and DataStore
-
-## Open in Android Studio
-
-Open the `Android/` directory as a Gradle project, then run the `app` configuration on a device or emulator.
-
-Useful commands from this directory:
+Open the `Android/` directory in Android Studio and run the `app` configuration, or use the wrapper:
 
 ```sh
-./gradlew assembleDebug
-./gradlew installDebug
+./gradlew installDebug      # build and install on a connected device/emulator
+./gradlew bundleRelease     # build a release AAB
 ```
 
-## Release signing
+## Documentation
 
-The release build reads signing configuration from environment variables:
+Full documentation — setup, usage, self-hosting, and API reference — lives at [docs.withcapsule.dev](https://docs.withcapsule.dev).
 
-- `KEYSTORE_PATH`
-- `KEYSTORE_PASSWORD`
-- `KEY_ALIAS`
-- `KEY_PASSWORD`
-
-If those are not set, the project falls back to the debug signing config.
-
-## Notes
-
-- the app can be pointed at a self-hosted server from settings
-- server validation includes a ping check before saving the address
-- encrypted transfers require keeping the generated passphrase or mnemonic on the client side
+See [PRIVACY_POLICY.md](PRIVACY_POLICY.md) for how the app handles data.

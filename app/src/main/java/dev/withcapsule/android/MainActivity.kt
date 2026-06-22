@@ -104,9 +104,10 @@ class MainActivity : ComponentActivity() {
         val settingsViewModel = ViewModelProvider(this, viewModelFactory)[SettingsViewModel::class.java]
 
         CoroutineScope(Dispatchers.IO).launch {
-            // app_launched fires once per session; attach device attributes here so they are
-            // recorded once rather than on every event.
-            analytics.event(url = "/", name = "app_launched", data = analytics.deviceInfo)
+            // Attach device attributes to the session (once per launch) so each session shows which
+            // device/OS it ran on, then record the launch event itself.
+            analytics.identify(analytics.deviceInfo)
+            analytics.event(url = "/", name = "app_launched")
         }
 
         handleIntent(intent)
