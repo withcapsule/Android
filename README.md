@@ -5,6 +5,9 @@
     <a href="https://github.com/withcapsule/Android/releases">
         <img src="https://img.shields.io/github/release/withcapsule/Android.svg" alt="GitHub release">
     </a>
+    <a href="https://github.com/withcapsule/Android/actions/workflows/build.yml">
+        <img src="https://github.com/withcapsule/Android/actions/workflows/build.yml/badge.svg" alt="Build status">
+    </a>
     <img alt="Minimum SDK" src="https://img.shields.io/badge/API-29%2B-green">
 </p>
 
