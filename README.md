@@ -1,22 +1,47 @@
-# Capsule for Android
+<p align="center"><img src="app/store-assets/icon-source/play_store_512.png" width="150"></p>
+<h1 align="center"><b>Capsule for Android</b></h1>
+<h4 align="center">Send and receive files privately, straight from your Android device</h4>
+<p align="center">
+    <a href="https://github.com/Seanathan10/Android/releases">
+        <img src="https://img.shields.io/github/release/Seanathan10/Android.svg" alt="GitHub release">
+    </a>
+    <img alt="Minimum SDK" src="https://img.shields.io/badge/API-29%2B-green">
+</p>
 
-The Android client for **Capsule**, a privacy-friendly file-transfer app. Send and receive files (by ID or QR code), with optional on-device end-to-end encryption.
+## Screenshots
 
-- **Package:** `dev.withcapsule.android`
-- **Min SDK:** 29 · **Target SDK:** 36
-- Built with Kotlin, Jetpack Compose, Retrofit, CameraX, and DataStore.
+[<img src="https://docs.withcapsule.dev/images/android/thumbs/Android_Send.webp"
+    alt="Send"
+    width="200">](https://docs.withcapsule.dev/images/android/Android_Send.png)
+[<img src="https://docs.withcapsule.dev/images/android/thumbs/Android_Receive.webp"
+    alt="Receive"
+    width="200">](https://docs.withcapsule.dev/images/android/Android_Receive.png)
+[<img src="https://docs.withcapsule.dev/images/android/thumbs/Android_History.webp"
+    alt="History"
+    width="200">](https://docs.withcapsule.dev/images/android/Android_History.png)
+[<img src="https://docs.withcapsule.dev/images/android/thumbs/Android_Settings.webp"
+    alt="Settings"
+    width="200">](https://docs.withcapsule.dev/images/android/Android_Settings.png)
+
+## Features
+
+* Upload files directly or via the system share sheet
+* Download files by ID or QR code scan
+* Optional client-side end-to-end encryption with a BIP39 mnemonic passphrase
+* QR code display after upload for easy sharing
+* Upload history with time remaining per file
+* Self-hosted server support, including LAN
+* Dark, light, and system theme
+* Anonymous opt-out analytics
 
 ## Building
 
-Open the `Android/` directory in Android Studio and run the `app` configuration, or use the wrapper:
-
 ```sh
 ./gradlew installDebug      # build and install on a connected device/emulator
-./gradlew bundleRelease     # build a release AAB
 ```
 
 ## Documentation
 
-Full documentation — setup, usage, self-hosting, and API reference — lives at [docs.withcapsule.dev](https://docs.withcapsule.dev).
+Full documentation lives at [docs.withcapsule.dev](https://docs.withcapsule.dev).
 
 See [PRIVACY_POLICY.md](PRIVACY_POLICY.md) for how the app handles data.
