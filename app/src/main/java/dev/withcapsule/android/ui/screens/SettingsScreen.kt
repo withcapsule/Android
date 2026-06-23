@@ -20,6 +20,7 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.OpenInNew
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -427,11 +428,61 @@ fun SettingsScreen(paddingValues: PaddingValues, settingsViewModel: SettingsView
 
         Spacer(modifier = Modifier.height(24.dp))
 
+        Column(modifier = Modifier.fillMaxWidth()) {
+            Text(
+                text = stringResource(R.string.about),
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.padding(bottom = 8.dp)
+            )
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TextButton(onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, "https://withcapsule.dev?utm_source=capsule_android&utm_medium=app&utm_campaign=settings".toUri())) }) {
+                    Text("withcapsule.dev", fontSize = 16.sp)
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Icon(Icons.Default.OpenInNew, contentDescription = null, modifier = Modifier.size(14.dp))
+                }
+                Text("·", fontSize = 14.sp, color = MaterialTheme.colorScheme.outline)
+                TextButton(onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, "https://byseansingh.com?utm_source=capsule_android&utm_medium=app&utm_campaign=settings".toUri())) }) {
+                    Text("Made byseansingh.com", fontSize = 16.sp)
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Icon(Icons.Default.OpenInNew, contentDescription = null, modifier = Modifier.size(14.dp))
+                }
+            }
+
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 16.dp),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                TextButton(onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, "https://docs.withcapsule.dev/terms/".toUri())) }) {
+                    Text("Terms of Service", fontSize = 16.sp)
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Icon(Icons.Default.OpenInNew, contentDescription = null, modifier = Modifier.size(14.dp))
+                }
+                Text("·", fontSize = 14.sp, color = MaterialTheme.colorScheme.outline)
+                TextButton(onClick = { context.startActivity(Intent(Intent.ACTION_VIEW, "https://docs.withcapsule.dev/privacy/".toUri())) }) {
+                    Text("Privacy Policy", fontSize = 16.sp)
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Icon(Icons.Default.OpenInNew, contentDescription = null, modifier = Modifier.size(14.dp))
+                }
+            }
+
+
+        }
+
         Text(
             text = stringResource(R.string.app_version),
-            fontSize = 14.sp,
+            fontSize = 16.sp,
             color = MaterialTheme.colorScheme.outline,
-            modifier = Modifier.padding(bottom = 16.dp)
+            modifier = Modifier.padding(bottom = 8.dp)
         )
+
+//        Spacer( modifier = Modifier.height(12.dp) )
+
+
     }
 }
