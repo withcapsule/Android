@@ -30,7 +30,7 @@ interface ApiService {
     suspend fun downloadFile(@Path("id") id: String): Response<ResponseBody>
 
     @Multipart
-    @POST("curlup")
+    @POST("upload")
     suspend fun uploadFile(
         @Query("encrypted") encrypted: Boolean,
         @Part file: MultipartBody.Part
