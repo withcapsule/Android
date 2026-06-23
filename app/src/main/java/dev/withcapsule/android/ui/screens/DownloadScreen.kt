@@ -72,6 +72,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
@@ -89,6 +90,7 @@ import com.google.mlkit.vision.barcode.BarcodeScanning
 import com.google.mlkit.vision.barcode.common.Barcode
 import com.google.mlkit.vision.common.InputImage
 import dev.withcapsule.android.QRScanner
+import dev.withcapsule.android.R
 import dev.withcapsule.android.analytics
 import dev.withcapsule.android.ui.viewmodel.DownloadState
 import dev.withcapsule.android.ui.viewmodel.DownloadViewModel
@@ -114,12 +116,14 @@ fun DownloadScreen(
 
     var pendingTargetName by rememberSaveable { mutableStateOf<String?>(null) }
     val pendingTarget = pendingTargetName?.let { ScannerTarget.valueOf(it) }
-    
+
     val scrollState = rememberScrollState()
     val context = LocalContext.current
     val baseUrl by settingsViewModel.effectiveBaseUrl.collectAsState()
     val downloadDirUri by settingsViewModel.downloadDirUri.collectAsState()
     val downloadState by downloadViewModel.downloadState.collectAsState()
+
+    val strOpenFile = stringResource(R.string.download_open_chooser)
 
     val scanResult = navController.currentBackStackEntry
         ?.savedStateHandle
@@ -169,28 +173,28 @@ fun DownloadScreen(
         verticalArrangement = Arrangement.Top
     ) {
         Spacer(modifier = Modifier.height(48.dp))
-        
+
         Icon(
             imageVector = Icons.Default.Download,
-            contentDescription = "Receive",
+            contentDescription = stringResource(R.string.download_icon_desc),
             modifier = Modifier.size(100.dp),
             tint = MaterialTheme.colorScheme.primary
         )
-        
+
         Spacer(modifier = Modifier.height(24.dp))
-        
+
         Text(
-            text = "Receive File",
+            text = stringResource(R.string.download_title),
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold
         )
-        
+
         Spacer(modifier = Modifier.height(32.dp))
 
         OutlinedTextField(
             value = idOrUrl,
             onValueChange = { idOrUrl = it },
-            label = { Text("File ID or Download URL") },
+            label = { Text(stringResource(R.string.download_field_label)) },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
             trailingIcon = {
@@ -199,7 +203,7 @@ fun DownloadScreen(
                     analytics.event(url = "/download", name = "start_qr_scan", data = mapOf("target" to ScannerTarget.ID_URL.name))
                     navController.navigate(QRScanner(target = ScannerTarget.ID_URL.name))
                 }) {
-                    Icon(Icons.Default.QrCodeScanner, contentDescription = "Scan QR")
+                    Icon(Icons.Default.QrCodeScanner, contentDescription = stringResource(R.string.btn_scan_qr))
                 }
             },
             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next)
@@ -217,7 +221,7 @@ fun DownloadScreen(
             modifier = Modifier.fillMaxWidth(),
             enabled = idOrUrl.isNotBlank() && downloadState is DownloadState.Idle
         ) {
-            Text("Download")
+            Text(stringResource(R.string.btn_download))
         }
 
         Spacer(modifier = Modifier.height(32.dp))
@@ -230,16 +234,16 @@ fun DownloadScreen(
             Column(modifier = Modifier.fillMaxWidth()) {
                 when (val state = downloadState) {
                     is DownloadState.Downloading -> {
-                        DownloadProgress("Downloading...", state.progress)
+                        DownloadProgress(stringResource(R.string.download_downloading), state.progress)
                     }
                     is DownloadState.Decrypting -> {
                         Column(modifier = Modifier.fillMaxWidth()) {
-                            DownloadProgress("Decrypting...", state.progress)
+                            DownloadProgress(stringResource(R.string.download_decrypting), state.progress)
                             Spacer(modifier = Modifier.height(16.dp))
                             OutlinedTextField(
                                 value = mnemonic,
                                 onValueChange = { mnemonic = it },
-                                label = { Text("Mnemonic Phrase (Age)") },
+                                label = { Text(stringResource(R.string.download_mnemonic_label)) },
                                 modifier = Modifier.fillMaxWidth(),
                                 trailingIcon = {
                                     IconButton(onClick = {
@@ -247,7 +251,7 @@ fun DownloadScreen(
                                         analytics.event(url = "/download", name = "start_qr_scan", data = mapOf("target" to ScannerTarget.MNEMONIC.name))
                                         navController.navigate(QRScanner(target = ScannerTarget.MNEMONIC.name))
                                     }) {
-                                        Icon(Icons.Default.QrCodeScanner, contentDescription = "Scan QR")
+                                        Icon(Icons.Default.QrCodeScanner, contentDescription = stringResource(R.string.btn_scan_qr))
                                     }
                                 }
                             )
@@ -262,7 +266,7 @@ fun DownloadScreen(
                                 modifier = Modifier.fillMaxWidth(),
                                 enabled = mnemonic.isNotBlank()
                             ) {
-                                Text("Decrypt and Save")
+                                Text(stringResource(R.string.btn_decrypt_save))
                             }
                         }
                     }
@@ -272,25 +276,25 @@ fun DownloadScreen(
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Column(modifier = Modifier.padding(16.dp)) {
-                                Text("Success", fontWeight = FontWeight.Bold)
-                                Text("File saved: ${state.fileName}", fontSize = 12.sp)
+                                Text(stringResource(R.string.download_success_title), fontWeight = FontWeight.Bold)
+                                Text(stringResource(R.string.download_file_saved, state.fileName), fontSize = 12.sp)
                                 Button(
                                     onClick = {
                                         val intent = Intent(Intent.ACTION_VIEW).apply {
                                             setDataAndType(state.uri, "application/octet-stream")
                                             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                                         }
-                                        context.startActivity(Intent.createChooser(intent, "Open file"))
+                                        context.startActivity(Intent.createChooser(intent, strOpenFile))
                                         CoroutineScope(Dispatchers.IO).launch {
                                             analytics.event(url = "/download", name = "open_file")
                                         }
                                     },
                                     modifier = Modifier.padding(top = 8.dp)
                                 ) {
-                                    Text("Open File")
+                                    Text(stringResource(R.string.btn_open_file))
                                 }
                                 TextButton(onClick = { downloadViewModel.resetState() }) {
-                                    Text("Done")
+                                    Text(stringResource(R.string.btn_done))
                                 }
                             }
                         }
@@ -301,14 +305,14 @@ fun DownloadScreen(
                             modifier = Modifier.fillMaxWidth()
                         ) {
                             Column(modifier = Modifier.padding(16.dp)) {
-                                Text("Error", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
+                                Text(stringResource(R.string.label_error), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
                                 Text(state.message, fontSize = 12.sp)
                                 Button(
                                     onClick = { downloadViewModel.resetState() },
                                     modifier = Modifier.padding(top = 8.dp),
                                     colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                                 ) {
-                                    Text("Dismiss")
+                                    Text(stringResource(R.string.btn_dismiss))
                                 }
                             }
                         }
@@ -336,6 +340,8 @@ fun QRScannerScreen(
         )
     }
     var showPermissionDeniedDialog by remember { mutableStateOf(false) }
+
+    val strPermissionToast = stringResource(R.string.qr_permission_toast)
 
     val launcher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
@@ -382,23 +388,23 @@ fun QRScannerScreen(
     if (showPermissionDeniedDialog) {
         AlertDialog(
             onDismissRequest = { showPermissionDeniedDialog = false },
-            title = { Text("Camera Permission Required") },
-            text = { Text("Android only allows an app to request camera access two times. To allow camera access, please enable it in the App Info page.") },
+            title = { Text(stringResource(R.string.qr_permission_title)) },
+            text = { Text(stringResource(R.string.qr_permission_message)) },
             confirmButton = {
                 TextButton(onClick = {
                     showPermissionDeniedDialog = false
-                    android.widget.Toast.makeText(context, "Enable camera under \"Permissions\"", android.widget.Toast.LENGTH_LONG).show()
+                    android.widget.Toast.makeText(context, strPermissionToast, android.widget.Toast.LENGTH_LONG).show()
                     val intent = Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
                         data = Uri.fromParts("package", context.packageName, null)
                     }
                     context.startActivity(intent)
                 }) {
-                    Text("App Info")
+                    Text(stringResource(R.string.btn_app_info))
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showPermissionDeniedDialog = false }) {
-                    Text("Close")
+                    Text(stringResource(R.string.btn_close))
                 }
             }
         )
@@ -419,12 +425,12 @@ fun QRScannerScreen(
                 verticalArrangement = Arrangement.Center
             ) {
                 Text(
-                    "Camera permission is required to scan QR codes.",
+                    stringResource(R.string.qr_camera_rationale),
                     color = Color.White,
                     textAlign = TextAlign.Center
                 )
                 Spacer(modifier = Modifier.height(16.dp))
-                Button(onClick = { 
+                Button(onClick = {
                     val activity = context as? Activity
                     if (activity != null && !ActivityCompat.shouldShowRequestPermissionRationale(activity, Manifest.permission.CAMERA)) {
                         showPermissionDeniedDialog = true
@@ -432,7 +438,7 @@ fun QRScannerScreen(
                         launcher.launch(Manifest.permission.CAMERA)
                     }
                 }) {
-                    Text("Grant Permission")
+                    Text(stringResource(R.string.btn_grant_permission))
                 }
             }
         }
@@ -449,11 +455,12 @@ fun QRScannerScreen(
                     .padding(16.dp)
                     .background(Color.Black.copy(alpha = 0.5f), shape = MaterialTheme.shapes.small)
             ) {
-                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back", tint = Color.White)
+                Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.qr_back_desc), tint = Color.White)
             }
-            
+
             Text(
-                text = if (target == ScannerTarget.ID_URL) "Scan ID or URL" else "Scan Mnemonic Phrase",
+                text = if (target == ScannerTarget.ID_URL) stringResource(R.string.qr_scan_id_label)
+                       else stringResource(R.string.qr_scan_mnemonic_label),
                 color = Color.White,
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
@@ -523,7 +530,7 @@ fun QRScannerView(onCodeScanned: (String) -> Unit) {
                 // Query 60 FPS range
                 val cameraCharacteristics = Camera2CameraInfo.from(cameraInfo)
                     .getCameraCharacteristic(CameraCharacteristics.CONTROL_AE_AVAILABLE_TARGET_FPS_RANGES)
-                
+
                 val targetFpsRange = cameraCharacteristics?.find { range ->
                     range.upper >= 60 || range.lower >= 60
                 }

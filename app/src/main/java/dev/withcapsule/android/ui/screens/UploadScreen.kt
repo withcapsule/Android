@@ -51,10 +51,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.withcapsule.android.R
 import dev.withcapsule.android.analytics
 import dev.withcapsule.android.ui.viewmodel.SettingsViewModel
 import dev.withcapsule.android.ui.viewmodel.UploadState
@@ -76,17 +78,20 @@ import kotlinx.coroutines.launch
 fun UploadScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewModel, uploadViewModel: UploadViewModel) {
     var isEncrypted by remember { mutableStateOf(false) }
     var selectedFileUri by remember { mutableStateOf<Uri?>(null) }
-    var qrDialogData by remember { mutableStateOf<Pair<String, String>?>(null) } // Title to Content
+    var qrDialogData by remember { mutableStateOf<Pair<String, String>?>(null) }
     val scrollState = rememberScrollState()
     val context = LocalContext.current
     val haptic = LocalHapticFeedback.current
     @Suppress("DEPRECATION")
     val clipboardManager = androidx.compose.ui.platform.LocalClipboardManager.current
-    
+
     val hapticsEnabled by settingsViewModel.hapticsEnabled.collectAsState()
     val baseUrl by settingsViewModel.effectiveBaseUrl.collectAsState()
     val uploadState by uploadViewModel.uploadState.collectAsState()
     val sharedFileUri by uploadViewModel.sharedFileUri.collectAsState()
+
+    val qrDecryptionTitle = stringResource(R.string.qr_dialog_decryption_title)
+    val qrDownloadTitle = stringResource(R.string.qr_dialog_download_title)
 
     LaunchedEffect(sharedFileUri) {
         sharedFileUri?.let {
@@ -129,55 +134,55 @@ fun UploadScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewMo
         verticalArrangement = Arrangement.Top
     ) {
         Spacer(modifier = Modifier.height(48.dp))
-        
+
         Icon(
             imageVector = Icons.Default.UploadFile,
-            contentDescription = "Send",
+            contentDescription = stringResource(R.string.upload_icon_desc),
             modifier = Modifier.size(100.dp),
             tint = MaterialTheme.colorScheme.primary
         )
-        
+
         Spacer(modifier = Modifier.height(24.dp))
-        
+
         Text(
-            text = "Send File",
+            text = stringResource(R.string.upload_title),
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold
         )
-        
+
         Spacer(modifier = Modifier.height(32.dp))
-        
+
         OutlinedButton(
             onClick = { filePickerLauncher.launch("*/*") },
             modifier = Modifier.fillMaxWidth(),
             enabled = uploadState is UploadState.Idle || uploadState is UploadState.Success || uploadState is UploadState.Error
         ) {
-            Text(if (selectedFileUri == null) "Select File" else "Change File")
+            Text(if (selectedFileUri == null) stringResource(R.string.btn_select_file) else stringResource(R.string.btn_change_file))
         }
 
         selectedFileUri?.let { uri ->
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "Selected: ${uri.path?.substringAfterLast('/')}",
+                text = stringResource(R.string.upload_selected_file, uri.path?.substringAfterLast('/') ?: ""),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.outline
             )
         }
-        
+
         Spacer(modifier = Modifier.height(16.dp))
-        
+
         Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.Center
         ) {
-            Text("Encrypt transfer")
+            Text(stringResource(R.string.upload_encrypt_label))
             Spacer(modifier = Modifier.width(8.dp))
             Switch(
                 checked = isEncrypted,
                 enabled = uploadState is UploadState.Idle || uploadState is UploadState.Success || uploadState is UploadState.Error,
-                onCheckedChange = { 
-                    isEncrypted = it 
+                onCheckedChange = {
+                    isEncrypted = it
                     CoroutineScope(Dispatchers.IO).launch {
                         analytics.event(url = "/upload", name = "encryption_toggled", data = mapOf("enabled" to it.toString()))
                     }
@@ -196,14 +201,14 @@ fun UploadScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewMo
 
         when (val state = uploadState) {
             is UploadState.Encrypting -> {
-                UploadProgress(label = "Encrypting...", progress = state.progress)
+                UploadProgress(label = stringResource(R.string.upload_encrypting), progress = state.progress)
             }
             is UploadState.Uploading -> {
-                UploadProgress(label = "Sending...", progress = state.progress)
+                UploadProgress(label = stringResource(R.string.upload_sending), progress = state.progress)
             }
             else -> {
                 Button(
-                    onClick = { 
+                    onClick = {
                         selectedFileUri?.let { uri ->
                             CoroutineScope(Dispatchers.IO).launch {
                                 analytics.event(url = "/upload", name = "upload_started", data = mapOf("encrypted" to isEncrypted.toString()))
@@ -214,7 +219,7 @@ fun UploadScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewMo
                     modifier = Modifier.fillMaxWidth(),
                     enabled = selectedFileUri != null
                 ) {
-                    Text("Send File")
+                    Text(stringResource(R.string.btn_send_file))
                 }
             }
         }
@@ -236,18 +241,18 @@ fun UploadScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewMo
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Text(
-                                "Send Success!",
-                                fontWeight = FontWeight.Bold, 
+                                stringResource(R.string.upload_success_title),
+                                fontWeight = FontWeight.Bold,
                                 color = MaterialTheme.colorScheme.onSecondaryContainer
                             )
                             Spacer(modifier = Modifier.height(8.dp))
-                            
+
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                Text("File ID: ${state.fileId}", fontSize = 14.sp, modifier = Modifier.weight(1f))
+                                Text(stringResource(R.string.upload_file_id, state.fileId), fontSize = 14.sp, modifier = Modifier.weight(1f))
                                 IconButton(onClick = {
                                     clipboardManager.setText(AnnotatedString(state.fileId))
                                     CoroutineScope(Dispatchers.IO).launch {
@@ -255,16 +260,16 @@ fun UploadScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewMo
                                     }
                                     if (hapticsEnabled) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                 }) {
-                                    Icon(Icons.Default.ContentCopy, contentDescription = "Copy File ID", modifier = Modifier.size(16.dp))
+                                    Icon(Icons.Default.ContentCopy, contentDescription = stringResource(R.string.icon_copy_file_id_desc), modifier = Modifier.size(16.dp))
                                 }
                             }
-                            
+
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                Text("Link: ${state.downloadUrl}", fontSize = 12.sp, modifier = Modifier.weight(1f))
+                                Text(stringResource(R.string.upload_link, state.downloadUrl), fontSize = 12.sp, modifier = Modifier.weight(1f))
                                 IconButton(onClick = {
                                     clipboardManager.setText(AnnotatedString(state.downloadUrl))
                                     CoroutineScope(Dispatchers.IO).launch {
@@ -272,13 +277,13 @@ fun UploadScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewMo
                                     }
                                     if (hapticsEnabled) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                 }) {
-                                    Icon(Icons.Default.ContentCopy, contentDescription = "Copy Link", modifier = Modifier.size(16.dp))
+                                    Icon(Icons.Default.ContentCopy, contentDescription = stringResource(R.string.icon_copy_link_desc), modifier = Modifier.size(16.dp))
                                 }
                             }
 
                             if (state.mnemonic != null) {
                                 Spacer(modifier = Modifier.height(8.dp))
-                                Text("Decryption Phrases:", fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                Text(stringResource(R.string.upload_decryption_phrases_label), fontWeight = FontWeight.Bold, fontSize = 12.sp)
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     verticalAlignment = Alignment.CenterVertically
@@ -291,7 +296,7 @@ fun UploadScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewMo
                                         }
                                         if (hapticsEnabled) haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                     }) {
-                                        Icon(Icons.Default.ContentCopy, contentDescription = "Copy Phrases", modifier = Modifier.size(16.dp))
+                                        Icon(Icons.Default.ContentCopy, contentDescription = stringResource(R.string.icon_copy_phrases_desc), modifier = Modifier.size(16.dp))
                                     }
                                 }
                             }
@@ -302,36 +307,36 @@ fun UploadScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewMo
                             ) {
                                 if (state.mnemonic != null) {
                                     Button(
-                                        onClick = { 
-                                            qrDialogData = "Scan Decryption Phrases" to state.mnemonic 
+                                        onClick = {
+                                            qrDialogData = qrDecryptionTitle to state.mnemonic
                                             CoroutineScope(Dispatchers.IO).launch {
                                                 analytics.event(url = "/upload", name = "show_qr_mnemonic")
                                             }
                                         },
                                         modifier = Modifier.fillMaxWidth()
                                     ) {
-                                        Text("Show Decryption QR Code")
+                                        Text(stringResource(R.string.btn_show_decryption_qr))
                                     }
                                 }
                                 Button(
-                                    onClick = { 
-                                        qrDialogData = "Scan to Receive" to state.downloadUrl 
+                                    onClick = {
+                                        qrDialogData = qrDownloadTitle to state.downloadUrl
                                         CoroutineScope(Dispatchers.IO).launch {
                                             analytics.event(url = "/upload", name = "show_qr_download")
                                         }
                                     },
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
-                                    Text("Show Download Link QR Code")
+                                    Text(stringResource(R.string.btn_show_download_qr))
                                 }
                                 Button(
-                                    onClick = { 
-                                        uploadViewModel.resetState() 
+                                    onClick = {
+                                        uploadViewModel.resetState()
                                         selectedFileUri = null
                                     },
                                     modifier = Modifier.fillMaxWidth()
                                 ) {
-                                    Text("Done")
+                                    Text(stringResource(R.string.btn_done))
                                 }
                             }
 
@@ -340,7 +345,7 @@ fun UploadScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewMo
                                     onDismissRequest = { qrDialogData = null },
                                     confirmButton = {
                                         TextButton(onClick = { qrDialogData = null }) {
-                                            Text("Close")
+                                            Text(stringResource(R.string.btn_close))
                                         }
                                     },
                                     title = { Text(title) },
@@ -361,7 +366,7 @@ fun UploadScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewMo
                                                         dark = QrBrush.solid(MaterialTheme.colorScheme.primary)
                                                     )
                                                 ),
-                                                contentDescription = "QR Code",
+                                                contentDescription = stringResource(R.string.qr_code_desc),
                                                 modifier = Modifier.size(200.dp)
                                             )
                                         }
@@ -376,14 +381,14 @@ fun UploadScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewMo
                         modifier = Modifier.fillMaxWidth()
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
-                            Text("Error", fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
+                            Text(stringResource(R.string.label_error), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.error)
                             Text(state.message, fontSize = 12.sp)
                             Button(
                                 onClick = { uploadViewModel.resetState() },
                                 modifier = Modifier.padding(top = 8.dp).align(Alignment.End),
                                 colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                             ) {
-                                Text("Dismiss")
+                                Text(stringResource(R.string.btn_dismiss))
                             }
                         }
                     }

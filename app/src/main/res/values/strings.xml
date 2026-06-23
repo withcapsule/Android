@@ -1,3 +1,139 @@
 <resources>
     <string name="app_name">Capsule</string>
+
+    <!-- Navigation -->
+    <string name="nav_send">Send</string>
+    <string name="nav_receive">Receive</string>
+    <string name="nav_history">History</string>
+    <string name="nav_settings">Settings</string>
+
+    <!-- Common actions -->
+    <string name="btn_done">Done</string>
+    <string name="btn_close">Close</string>
+    <string name="btn_dismiss">Dismiss</string>
+    <string name="btn_cancel">Cancel</string>
+    <string name="btn_grant_permission">Grant Permission</string>
+    <string name="btn_continue">Continue</string>
+    <string name="label_error">Error</string>
+
+    <!-- Upload screen -->
+    <string name="upload_icon_desc">Send</string>
+    <string name="upload_title">Send File</string>
+    <string name="btn_select_file">Select File</string>
+    <string name="btn_change_file">Change File</string>
+    <string name="upload_selected_file">Selected: %s</string>
+    <string name="upload_encrypt_label">Encrypt transfer</string>
+    <string name="upload_encrypting">Encrypting...</string>
+    <string name="upload_sending">Sending...</string>
+    <string name="btn_send_file">Send File</string>
+    <string name="upload_success_title">Send Success!</string>
+    <string name="upload_file_id">File ID: %s</string>
+    <string name="upload_link">Link: %s</string>
+    <string name="upload_decryption_phrases_label">Decryption Phrases:</string>
+    <string name="icon_copy_file_id_desc">Copy File ID</string>
+    <string name="icon_copy_link_desc">Copy Link</string>
+    <string name="icon_copy_phrases_desc">Copy Phrases</string>
+    <string name="btn_show_decryption_qr">Show Decryption QR Code</string>
+    <string name="btn_show_download_qr">Show Download Link QR Code</string>
+    <string name="qr_dialog_decryption_title">Scan Decryption Phrases</string>
+    <string name="qr_dialog_download_title">Scan to Receive</string>
+    <string name="qr_code_desc">QR Code</string>
+
+    <!-- Download screen -->
+    <string name="download_icon_desc">Receive</string>
+    <string name="download_title">Receive File</string>
+    <string name="download_field_label">File ID or Download URL</string>
+    <string name="btn_scan_qr">Scan QR</string>
+    <string name="btn_download">Download</string>
+    <string name="download_downloading">Downloading...</string>
+    <string name="download_decrypting">Decrypting...</string>
+    <string name="download_mnemonic_label">Decryption Phrase</string>
+    <string name="btn_decrypt_save">Decrypt and Save</string>
+    <string name="download_success_title">Success</string>
+    <string name="download_file_saved">File saved: %s</string>
+    <string name="download_open_chooser">Open file</string>
+    <string name="btn_open_file">Open File</string>
+    <string name="qr_back_desc">Back</string>
+    <string name="qr_scan_id_label">Scan ID or URL</string>
+    <string name="qr_scan_mnemonic_label">Scan Mnemonic Phrase</string>
+
+    <!-- QR camera permission -->
+    <string name="qr_permission_title">Camera Permission Required</string>
+    <string name="qr_permission_message">Android only allows an app to request camera access two times. To allow camera access, please enable it in the App Info page.</string>
+    <string name="qr_permission_toast">Enable camera under \"Permissions\"</string>
+    <string name="btn_app_info">App Info</string>
+    <string name="qr_camera_rationale">Camera permission is required to scan QR codes.</string>
+
+    <!-- History screen -->
+    <string name="history_icon_desc">History</string>
+    <string name="history_title">Recent Activity</string>
+    <string name="history_swipe_hint">Swipe left or right on an entry to delete it from history.</string>
+    <string name="history_empty">No recent activity</string>
+    <string name="icon_delete_desc">Delete</string>
+    <string name="btn_clear_history">Clear history</string>
+    <string name="dialog_file_status_title">File Status</string>
+    <string name="dialog_delete_title">Delete Entry</string>
+    <string name="dialog_delete_message">What would you like to do with %s?</string>
+    <string name="btn_delete_from_server">Delete from server</string>
+    <string name="btn_delete_from_recents">Delete from recents</string>
+    <string name="snackbar_deleted_from_server">File deleted from server and recents</string>
+    <string name="snackbar_error">Error: %s</string>
+    <string name="snackbar_removed_from_recents">Removed from recents</string>
+    <string name="status_id_label">ID (tap to copy)</string>
+    <string name="status_id_copied">ID copied to clipboard!</string>
+    <string name="status_name_label">Name</string>
+    <string name="status_size_label">Size</string>
+    <string name="status_encryption_label">Encryption</string>
+    <string name="status_encryption_active">Active</string>
+    <string name="status_encryption_none">None</string>
+    <string name="status_expires_label">Expires in</string>
+    <string name="history_item_id">ID: %s</string>
+    <string name="history_item_encrypted_desc">Encrypted</string>
+    <string name="history_item_status_desc">Status</string>
+    <string name="duration_expired">Expired</string>
+    <string name="duration_hours_minutes">%1$dh %2$dm</string>
+    <string name="duration_minutes">%dm</string>
+    <string name="timestamp_just_now">Just now</string>
+    <string name="timestamp_minutes_ago">%dm ago</string>
+    <string name="timestamp_hours_ago">%dh ago</string>
+
+    <!-- Settings screen -->
+    <string name="settings_icon_desc">Settings</string>
+    <string name="settings_title">Settings</string>
+    <string name="settings_server_config_title">Server Configuration</string>
+    <string name="settings_protocol_label">Protocol</string>
+    <string name="settings_custom_url_label">Custom Server URL</string>
+    <string name="settings_custom_url_placeholder">your-server.com</string>
+    <string name="btn_ping_server">Ping Server</string>
+    <string name="btn_ping_server_and_save">Ping Server URL and Save</string>
+    <string name="settings_receive_title">Receive Settings</string>
+    <string name="settings_receive_dir_label">Receive Directory</string>
+    <string name="receive_dir_default">Default (Downloads/Capsules)</string>
+    <string name="receive_dir_custom">Custom</string>
+    <string name="btn_change_dir">Change</string>
+    <string name="btn_reset_to_default">Reset to Default</string>
+    <string name="settings_app_title">App Settings</string>
+    <string name="settings_haptics_label">In-app Haptics</string>
+    <string name="settings_theme_title">App Theme</string>
+    <string name="settings_privacy_title">Privacy</string>
+    <string name="settings_analytics_label">Allow Anonymous Analytics</string>
+    <string name="app_version">Capsule Android v1.0</string>
+
+    <!-- Onboarding screen -->
+    <string name="onboarding_camera_title">Camera Access</string>
+    <string name="onboarding_camera_message">Capsule can use your camera to scan QR codes for quick receiving. This is completely optional.</string>
+    <string name="btn_maybe_later">Maybe Later</string>
+    <string name="onboarding_welcome_title">Welcome to Capsule</string>
+    <string name="onboarding_welcome_message">The simplest way to move your files securely across your devices.</string>
+    <string name="btn_get_started">Get Started</string>
+    <string name="onboarding_server_title">Server Configuration</string>
+    <string name="onboarding_server_message">Select Default for an out-of-the-box working experience, or select Custom if self-hosting</string>
+    <string name="onboarding_url_label">URL</string>
+    <string name="onboarding_download_title">Receive Directory</string>
+    <string name="onboarding_download_message">Choose where you want to save your received files.</string>
+    <string name="onboarding_download_custom">Custom Directory...</string>
+    <string name="onboarding_download_custom_selected">Custom: %s</string>
+    <string name="onboarding_complete_title">You\'re all set!</string>
+    <string name="onboarding_complete_message">Capsule is ready to help you move files. Enjoy the seamless experience!</string>
+    <string name="btn_enter_app">Enter App</string>
 </resources>

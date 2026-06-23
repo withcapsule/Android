@@ -50,6 +50,7 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.ViewModel
@@ -228,10 +229,10 @@ fun AppNavigation(
     }
 
     val routes = listOf(
-        TopLevelRoute("Send", Upload, Icons.Default.Upload),
-        TopLevelRoute("Receive", Download, Icons.Default.Download),
-        TopLevelRoute("History", History, Icons.Default.History),
-        TopLevelRoute("Settings", Settings, Icons.Default.Settings)
+        TopLevelRoute(stringResource(R.string.nav_send), Upload, Icons.Default.Upload),
+        TopLevelRoute(stringResource(R.string.nav_receive), Download, Icons.Default.Download),
+        TopLevelRoute(stringResource(R.string.nav_history), History, Icons.Default.History),
+        TopLevelRoute(stringResource(R.string.nav_settings), Settings, Icons.Default.Settings)
     )
 
     Row(modifier = Modifier.fillMaxSize()) {

@@ -46,11 +46,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.net.toUri
+import dev.withcapsule.android.R
 import dev.withcapsule.android.analytics
 import dev.withcapsule.android.ui.components.LargeDropdownMenu
 import dev.withcapsule.android.ui.viewmodel.ServerOption
@@ -70,12 +72,12 @@ fun SettingsScreen(paddingValues: PaddingValues, settingsViewModel: SettingsView
     } catch (e: Exception) {
         ServerOption.Default
     }
-    
+
     val customUrl by settingsViewModel.customUrl.collectAsState()
     val selectedProtocolIndex by settingsViewModel.customProtocolIndex.collectAsState()
     val downloadDirUri by settingsViewModel.downloadDirUri.collectAsState()
     val themeMode by settingsViewModel.themeMode.collectAsState()
-    
+
     val protocols = listOf("https://", "http://")
     val scrollState = rememberScrollState()
     val hapticsEnabled by settingsViewModel.hapticsEnabled.collectAsState()
@@ -114,27 +116,27 @@ fun SettingsScreen(paddingValues: PaddingValues, settingsViewModel: SettingsView
         verticalArrangement = Arrangement.Top
     ) {
         Spacer(modifier = Modifier.height(48.dp))
-        
+
         Icon(
             imageVector = Icons.Default.Settings,
-            contentDescription = "Settings",
+            contentDescription = stringResource(R.string.settings_icon_desc),
             modifier = Modifier.size(80.dp),
             tint = MaterialTheme.colorScheme.primary
         )
-        
+
         Spacer(modifier = Modifier.height(24.dp))
-        
+
         Text(
-            text = "Settings",
+            text = stringResource(R.string.settings_title),
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold
         )
-        
+
         Spacer(modifier = Modifier.height(32.dp))
 
         Column(modifier = Modifier.fillMaxWidth()) {
             Text(
-                text = "Server Configuration",
+                text = stringResource(R.string.settings_server_config_title),
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
@@ -146,7 +148,7 @@ fun SettingsScreen(paddingValues: PaddingValues, settingsViewModel: SettingsView
                         .height(56.dp)
                         .selectable(
                             selected = (option == selectedOption),
-                            onClick = { 
+                            onClick = {
                                 settingsViewModel.updateServerOption(option.name)
                                 CoroutineScope(Dispatchers.IO).launch {
                                     analytics.event(url = "/settings", name = "server_option_changed", data = mapOf("option" to option.name))
@@ -169,7 +171,7 @@ fun SettingsScreen(paddingValues: PaddingValues, settingsViewModel: SettingsView
                 }
             }
         }
-        
+
         if (selectedOption == ServerOption.Custom) {
             Spacer(modifier = Modifier.height(16.dp))
             Row(
@@ -177,26 +179,26 @@ fun SettingsScreen(paddingValues: PaddingValues, settingsViewModel: SettingsView
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 LargeDropdownMenu(
-                    label = "Protocol",
+                    label = stringResource(R.string.settings_protocol_label),
                     items = protocols,
                     selectedIndex = selectedProtocolIndex,
-                    onItemSelected = { index, _ -> 
+                    onItemSelected = { index, _ ->
                         settingsViewModel.updateCustomProtocolIndex(index)
                     },
                     modifier = Modifier.width(124.dp)
                 )
-                
+
                 Spacer(modifier = Modifier.width(6.dp))
-                
+
                 OutlinedTextField(
                     value = customUrl,
-                    onValueChange = { 
+                    onValueChange = {
                         settingsViewModel.updateCustomUrl(it)
                     },
-                    label = { Text("Custom Server URL") },
+                    label = { Text(stringResource(R.string.settings_custom_url_label)) },
                     modifier = Modifier.weight(1f),
                     singleLine = true,
-                    placeholder = { Text("your-server.com") }
+                    placeholder = { Text(stringResource(R.string.settings_custom_url_placeholder)) }
                 )
             }
         }
@@ -224,8 +226,8 @@ fun SettingsScreen(paddingValues: PaddingValues, settingsViewModel: SettingsView
                 )
             } else {
                 Text(
-                    if (selectedOption == ServerOption.Default) "Ping Server" 
-                    else "Ping Server URL and Save"
+                    if (selectedOption == ServerOption.Default) stringResource(R.string.btn_ping_server)
+                    else stringResource(R.string.btn_ping_server_and_save)
                 )
             }
         }
@@ -234,9 +236,9 @@ fun SettingsScreen(paddingValues: PaddingValues, settingsViewModel: SettingsView
             Spacer(modifier = Modifier.height(16.dp))
             Card(
                 colors = CardDefaults.cardColors(
-                    containerColor = if (response.lowercase().contains("error")) 
-                        MaterialTheme.colorScheme.errorContainer 
-                    else 
+                    containerColor = if (response.lowercase().contains("error"))
+                        MaterialTheme.colorScheme.errorContainer
+                    else
                         MaterialTheme.colorScheme.secondaryContainer
                 ),
                 modifier = Modifier.fillMaxWidth()
@@ -248,54 +250,55 @@ fun SettingsScreen(paddingValues: PaddingValues, settingsViewModel: SettingsView
                 )
             }
         }
-        
+
         Spacer(modifier = Modifier.height(32.dp))
 
         Column(modifier = Modifier.fillMaxWidth()) {
             Text(
-                text = "Receive Settings",
+                text = stringResource(R.string.settings_receive_title),
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
 
             ListItem(
-                headlineContent = { Text("Receive Directory") },
-                supportingContent = { 
+                headlineContent = { Text(stringResource(R.string.settings_receive_dir_label)) },
+                supportingContent = {
                     Text(
-                        if (downloadDirUri == null) "Default (Downloads/Capsules)"
-                        else downloadDirUri?.toUri()?.path?.split("/")?.lastOrNull() ?: "Custom"
+                        if (downloadDirUri == null) stringResource(R.string.receive_dir_default)
+                        else downloadDirUri?.toUri()?.path?.split("/")?.lastOrNull()
+                            ?: stringResource(R.string.receive_dir_custom)
                     )
                 },
                 leadingContent = { Icon(Icons.Default.Folder, contentDescription = null) },
                 trailingContent = {
-                    TextButton(onClick = { 
+                    TextButton(onClick = {
                         CoroutineScope(Dispatchers.IO).launch {
                             analytics.event(url = "/settings", name = "change_download_dir")
                         }
-                        folderLauncher.launch(null) 
+                        folderLauncher.launch(null)
                     }) {
-                        Text("Change")
+                        Text(stringResource(R.string.btn_change_dir))
                     }
                 },
-                modifier = Modifier.clickable { 
+                modifier = Modifier.clickable {
                     CoroutineScope(Dispatchers.IO).launch {
                         analytics.event(url = "/settings", name = "change_download_dir")
                     }
-                    folderLauncher.launch(null) 
+                    folderLauncher.launch(null)
                 }
             )
-            
+
             if (downloadDirUri != null) {
                 TextButton(
-                    onClick = { 
-                        settingsViewModel.setDownloadDirUri(null) 
+                    onClick = {
+                        settingsViewModel.setDownloadDirUri(null)
                         CoroutineScope(Dispatchers.IO).launch {
                             analytics.event(url = "/settings", name = "reset_download_dir")
                         }
                     },
                     modifier = Modifier.padding(start = 16.dp)
                 ) {
-                    Text("Reset to Default")
+                    Text(stringResource(R.string.btn_reset_to_default))
                 }
             }
         }
@@ -304,7 +307,7 @@ fun SettingsScreen(paddingValues: PaddingValues, settingsViewModel: SettingsView
 
         Column(modifier = Modifier.fillMaxWidth()) {
             Text(
-                text = "App Settings",
+                text = stringResource(R.string.settings_app_title),
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
@@ -315,7 +318,7 @@ fun SettingsScreen(paddingValues: PaddingValues, settingsViewModel: SettingsView
                     .height(56.dp)
                     .selectable(
                         selected = hapticsEnabled,
-                        onClick = { 
+                        onClick = {
                             val newState = !hapticsEnabled
                             settingsViewModel.setHapticsEnabled(newState)
                             CoroutineScope(Dispatchers.IO).launch {
@@ -333,7 +336,7 @@ fun SettingsScreen(paddingValues: PaddingValues, settingsViewModel: SettingsView
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "In-app Haptics",
+                    text = stringResource(R.string.settings_haptics_label),
                     style = MaterialTheme.typography.bodyLarge,
                     modifier = Modifier.weight(1f)
                 )
@@ -346,7 +349,7 @@ fun SettingsScreen(paddingValues: PaddingValues, settingsViewModel: SettingsView
             Spacer(modifier = Modifier.height(16.dp))
 
             Text(
-                text = "App Theme",
+                text = stringResource(R.string.settings_theme_title),
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
@@ -357,7 +360,7 @@ fun SettingsScreen(paddingValues: PaddingValues, settingsViewModel: SettingsView
                 ThemeMode.entries.forEachIndexed { index, mode ->
                     SegmentedButton(
                         shape = SegmentedButtonDefaults.itemShape(index = index, count = ThemeMode.entries.size),
-                        onClick = { 
+                        onClick = {
                             settingsViewModel.setThemeMode(mode)
                             CoroutineScope(Dispatchers.IO).launch {
                                 analytics.event(url = "/settings", name = "theme_changed", data = mapOf("mode" to mode.name))
@@ -378,7 +381,7 @@ fun SettingsScreen(paddingValues: PaddingValues, settingsViewModel: SettingsView
 
         Column(modifier = Modifier.fillMaxWidth()) {
             Text(
-                text = "Privacy",
+                text = stringResource(R.string.settings_privacy_title),
                 style = MaterialTheme.typography.titleMedium,
                 modifier = Modifier.padding(bottom = 8.dp)
             )
@@ -411,7 +414,7 @@ fun SettingsScreen(paddingValues: PaddingValues, settingsViewModel: SettingsView
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Allow Anonymous Analytics",
+                    text = stringResource(R.string.settings_analytics_label),
                     style = MaterialTheme.typography.bodyLarge,
                     modifier = Modifier.weight(1f)
                 )
@@ -421,12 +424,11 @@ fun SettingsScreen(paddingValues: PaddingValues, settingsViewModel: SettingsView
                 )
             }
         }
-        
-//        Spacer(modifier = Modifier.weight(1f))
+
         Spacer(modifier = Modifier.height(24.dp))
-        
+
         Text(
-            text = "Capsule Android v1.0",
+            text = stringResource(R.string.app_version),
             fontSize = 14.sp,
             color = MaterialTheme.colorScheme.outline,
             modifier = Modifier.padding(bottom = 16.dp)

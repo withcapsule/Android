@@ -53,12 +53,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
+import dev.withcapsule.android.R
 import dev.withcapsule.android.analytics
 import dev.withcapsule.android.ui.components.LargeDropdownMenu
 import dev.withcapsule.android.ui.viewmodel.ServerOption
@@ -142,14 +144,14 @@ fun CameraPermissionPage(onNext: () -> Unit) {
         )
         Spacer(modifier = Modifier.height(32.dp))
         Text(
-            text = "Camera Access",
+            text = stringResource(R.string.onboarding_camera_title),
             fontSize = 32.sp,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            text = "Capsule can use your camera to scan QR codes for quick receiving. This is completely optional.",
+            text = stringResource(R.string.onboarding_camera_message),
             fontSize = 18.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
@@ -161,7 +163,7 @@ fun CameraPermissionPage(onNext: () -> Unit) {
                     context,
                     Manifest.permission.CAMERA
                 ) == PackageManager.PERMISSION_GRANTED
-                
+
                 if (hasPermission) {
                     onNext()
                 } else {
@@ -170,14 +172,14 @@ fun CameraPermissionPage(onNext: () -> Unit) {
             },
             modifier = Modifier.fillMaxWidth().height(56.dp)
         ) {
-            Text("Grant Permission", fontSize = 18.sp)
+            Text(stringResource(R.string.btn_grant_permission), fontSize = 18.sp)
         }
         Spacer(modifier = Modifier.height(12.dp))
         TextButton(
             onClick = onNext,
             modifier = Modifier.fillMaxWidth().height(56.dp)
         ) {
-            Text("Maybe Later", fontSize = 18.sp)
+            Text(stringResource(R.string.btn_maybe_later), fontSize = 18.sp)
         }
     }
 }
@@ -199,14 +201,14 @@ fun WelcomePage(onNext: () -> Unit) {
         )
         Spacer(modifier = Modifier.height(32.dp))
         Text(
-            text = "Welcome to Capsule",
+            text = stringResource(R.string.onboarding_welcome_title),
             fontSize = 32.sp,
             fontWeight = FontWeight.Bold,
-            textAlign = TextAlign.Center
+                        textAlign = TextAlign.Center
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            text = "The simplest way to move your files securely across your devices.",
+            text = stringResource(R.string.onboarding_welcome_message),
             fontSize = 18.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
@@ -216,7 +218,7 @@ fun WelcomePage(onNext: () -> Unit) {
             onClick = onNext,
             modifier = Modifier.fillMaxWidth().height(56.dp)
         ) {
-            Text("Get Started", fontSize = 18.sp)
+            Text(stringResource(R.string.btn_get_started), fontSize = 18.sp)
         }
     }
 }
@@ -236,9 +238,7 @@ fun ServerConfigPage(settingsViewModel: SettingsViewModel, onNext: () -> Unit) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .verticalScroll(
-                rememberScrollState()
-            )
+            .verticalScroll(rememberScrollState())
             .padding( 32.dp, 0.dp, 32.dp, 0.dp )
             .navigationBarsPadding()
             .statusBarsPadding(),
@@ -254,15 +254,14 @@ fun ServerConfigPage(settingsViewModel: SettingsViewModel, onNext: () -> Unit) {
         )
         Spacer(modifier = Modifier.height(24.dp))
         Text(
-            text = "Server Configuration",
+            text = stringResource(R.string.onboarding_server_title),
             fontSize = 24.sp,
             fontWeight = FontWeight.Bold
         )
 
         Spacer(modifier = Modifier.height(10.dp))
-        Text( "Select Default for an out-of-the-box working experience, or select Custom if self-hosting", textAlign = TextAlign.Center );
+        Text(stringResource(R.string.onboarding_server_message), textAlign = TextAlign.Center)
         Spacer(modifier = Modifier.height(22.dp))
-
 
         Column(
             modifier = Modifier.padding(0.dp, 0.dp, 0.dp, 0.dp).fillMaxWidth()
@@ -293,12 +292,11 @@ fun ServerConfigPage(settingsViewModel: SettingsViewModel, onNext: () -> Unit) {
             }
         }
 
-
         if (selectedOption == ServerOption.Custom) {
             Spacer(modifier = Modifier.height(16.dp))
             Row(modifier = Modifier.fillMaxWidth()) {
                 LargeDropdownMenu(
-                    label = "Protocol",
+                    label = stringResource(R.string.settings_protocol_label),
                     items = protocols,
                     selectedIndex = selectedProtocolIndex,
                     onItemSelected = { index, _ -> settingsViewModel.updateCustomProtocolIndex(index) },
@@ -308,16 +306,15 @@ fun ServerConfigPage(settingsViewModel: SettingsViewModel, onNext: () -> Unit) {
                 OutlinedTextField(
                     value = customUrl,
                     onValueChange = { settingsViewModel.updateCustomUrl(it) },
-                    label = { Text("URL") },
+                    label = { Text(stringResource(R.string.onboarding_url_label)) },
                     modifier = Modifier.weight(1f),
                     singleLine = true
                 )
             }
         }
 
-//        Spacer(modifier = Modifier.weight(1f))
         Spacer(modifier = Modifier.weight(1f))
-        
+
         Button(
             onClick = {
                 if (selectedOption == ServerOption.Custom) {
@@ -331,7 +328,7 @@ fun ServerConfigPage(settingsViewModel: SettingsViewModel, onNext: () -> Unit) {
             modifier = Modifier.fillMaxWidth().height(56.dp).padding(0.dp, 12.dp, 0.dp, 0.dp),
             enabled = selectedOption == ServerOption.Default || customUrl.isNotBlank()
         ) {
-            Text("Continue", fontSize = 18.sp)
+            Text(stringResource(R.string.btn_continue), fontSize = 18.sp)
         }
     }
 }
@@ -340,7 +337,7 @@ fun ServerConfigPage(settingsViewModel: SettingsViewModel, onNext: () -> Unit) {
 fun DownloadFolderPage(settingsViewModel: SettingsViewModel, onNext: () -> Unit) {
     val context = LocalContext.current
     val downloadDirUri by settingsViewModel.downloadDirUri.collectAsState()
-    
+
     val launcher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocumentTree(),
         onResult = { uri ->
@@ -357,7 +354,6 @@ fun DownloadFolderPage(settingsViewModel: SettingsViewModel, onNext: () -> Unit)
     Column(
         modifier = Modifier
             .fillMaxSize()
-//            .navigationBarsPadding()
             .verticalScroll( rememberScrollState() )
             .padding( 32.dp, 48.dp, 32.dp, 48.dp ),
         horizontalAlignment = Alignment.CenterHorizontally
@@ -371,14 +367,14 @@ fun DownloadFolderPage(settingsViewModel: SettingsViewModel, onNext: () -> Unit)
         )
         Spacer(modifier = Modifier.height(32.dp))
         Text(
-            text = "Receive Directory",
+            text = stringResource(R.string.onboarding_download_title),
             fontSize = 28.sp,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            text = "Choose where you want to save your received files.",
+            text = stringResource(R.string.onboarding_download_message),
             fontSize = 18.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
@@ -402,7 +398,7 @@ fun DownloadFolderPage(settingsViewModel: SettingsViewModel, onNext: () -> Unit)
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     RadioButton(selected = downloadDirUri == null, onClick = null)
-                    Text(text = "Default (Downloads/Capsules)", modifier = Modifier.padding(start = 8.dp))
+                    Text(text = stringResource(R.string.receive_dir_default), modifier = Modifier.padding(start = 8.dp))
                 }
                 Row(
                     modifier = Modifier
@@ -417,8 +413,12 @@ fun DownloadFolderPage(settingsViewModel: SettingsViewModel, onNext: () -> Unit)
                 ) {
                     RadioButton(selected = downloadDirUri != null, onClick = null)
                     Text(
-                        text = if (downloadDirUri == null) "Custom Directory..." 
-                               else "Custom: ${Uri.parse(downloadDirUri).path?.split("/")?.lastOrNull() ?: "Selected"}", 
+                        text = if (downloadDirUri == null) stringResource(R.string.onboarding_download_custom)
+                               else stringResource(
+                                   R.string.onboarding_download_custom_selected,
+                                   Uri.parse(downloadDirUri).path?.split("/")?.lastOrNull()
+                                       ?: stringResource(R.string.receive_dir_custom)
+                               ),
                         modifier = Modifier.padding(start = 8.dp)
                     )
                 }
@@ -426,12 +426,12 @@ fun DownloadFolderPage(settingsViewModel: SettingsViewModel, onNext: () -> Unit)
         }
 
         Spacer(modifier = Modifier.weight(1f))
-        
+
         Button(
             onClick = onNext,
             modifier = Modifier.fillMaxWidth().height(56.dp)
         ) {
-            Text("Continue", fontSize = 18.sp)
+            Text(stringResource(R.string.btn_continue), fontSize = 18.sp)
         }
     }
 }
@@ -453,14 +453,14 @@ fun CompletionPage(onFinish: () -> Unit) {
         )
         Spacer(modifier = Modifier.height(32.dp))
         Text(
-            text = "You're all set!",
+            text = stringResource(R.string.onboarding_complete_title),
             fontSize = 32.sp,
             fontWeight = FontWeight.Bold,
             textAlign = TextAlign.Center
         )
         Spacer(modifier = Modifier.height(16.dp))
         Text(
-            text = "Capsule is ready to help you move files. Enjoy the seamless experience!",
+            text = stringResource(R.string.onboarding_complete_message),
             fontSize = 18.sp,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center
@@ -475,7 +475,7 @@ fun CompletionPage(onFinish: () -> Unit) {
             },
             modifier = Modifier.fillMaxWidth().height(56.dp)
         ) {
-            Text("Enter App", fontSize = 18.sp)
+            Text(stringResource(R.string.btn_enter_app), fontSize = 18.sp)
         }
     }
 }

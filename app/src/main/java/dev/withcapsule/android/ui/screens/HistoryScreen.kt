@@ -1,5 +1,6 @@
 package dev.withcapsule.android.ui.screens
 
+import android.content.res.Resources
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -18,18 +19,19 @@ import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.platform.LocalLayoutDirection
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import dev.withcapsule.android.R
+import dev.withcapsule.android.analytics
 import dev.withcapsule.android.data.local.HistoryEntry
-import dev.withcapsule.android.data.remote.ApiService
 import dev.withcapsule.android.data.remote.FileStatus
-import dev.withcapsule.android.data.remote.RetrofitClient
 import dev.withcapsule.android.ui.viewmodel.SettingsViewModel
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -38,12 +40,6 @@ import java.util.Locale
 import kotlin.math.log10
 import kotlin.math.pow
 
-import dev.withcapsule.android.analytics
-import dev.appoutlet.umami.api.event
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun HistoryScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewModel) {
@@ -51,7 +47,7 @@ fun HistoryScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewM
     val coroutineScope = rememberCoroutineScope()
     val hapticsEnabled by settingsViewModel.hapticsEnabled.collectAsState()
     val snackbarHostState = remember { SnackbarHostState() }
-    
+
     var showStatusDialog by rememberSaveable { mutableStateOf(false) }
     val selectedStatus by settingsViewModel.fileStatus.collectAsState()
     val isLoadingStatus by settingsViewModel.isLoadingStatus.collectAsState()
@@ -63,6 +59,10 @@ fun HistoryScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewM
     val itemToDelete = remember(itemToDeleteId, history) {
         history.find { it.id == itemToDeleteId }
     }
+
+    val context = LocalContext.current
+    val strDeletedFromServer = stringResource(R.string.snackbar_deleted_from_server)
+    val strRemovedFromRecents = stringResource(R.string.snackbar_removed_from_recents)
 
     Scaffold(
         snackbarHost = { SnackbarHost(snackbarHostState) },
@@ -80,7 +80,7 @@ fun HistoryScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewM
 
             Icon(
                 imageVector = Icons.Default.History,
-                contentDescription = "History",
+                contentDescription = stringResource(R.string.history_icon_desc),
                 modifier = Modifier.size(80.dp),
                 tint = MaterialTheme.colorScheme.primary
             )
@@ -88,23 +88,23 @@ fun HistoryScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewM
             Spacer(modifier = Modifier.height(24.dp))
 
             Text(
-                text = "Recent Activity",
+                text = stringResource(R.string.history_title),
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold
             )
 
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "Swipe left or right on an entry to delete it from history.",
+                text = stringResource(R.string.history_swipe_hint),
                 textAlign = TextAlign.Center
             )
             Spacer(modifier = Modifier.height(24.dp))
-            
+
             if (history.isEmpty()) {
                 Box(modifier = Modifier
                     .fillMaxWidth()
                     .padding(top = 32.dp), contentAlignment = Alignment.Center) {
-                    Text("No recent activity", color = MaterialTheme.colorScheme.outline)
+                    Text(stringResource(R.string.history_empty), color = MaterialTheme.colorScheme.outline)
                 }
             } else {
                 Column(
@@ -149,7 +149,7 @@ fun HistoryScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewM
                                     ) {
                                         Icon(
                                             icon,
-                                            contentDescription = "Delete",
+                                            contentDescription = stringResource(R.string.icon_delete_desc),
                                             tint = MaterialTheme.colorScheme.error
                                         )
                                     }
@@ -178,25 +178,25 @@ fun HistoryScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewM
             Button(
                 modifier = Modifier.padding( 16.dp ),
                 enabled = history.isNotEmpty(),
-                onClick = { 
-                    settingsViewModel.clearHistory() 
+                onClick = {
+                    settingsViewModel.clearHistory()
                     CoroutineScope(Dispatchers.IO).launch {
                         analytics.event(url = "/history", name = "clear_history")
                     }
                 }
             ) {
-                Text( "Clear history" )
+                Text( stringResource(R.string.btn_clear_history) )
             }
         }
     }
 
     if (showStatusDialog) {
         AlertDialog(
-            onDismissRequest = { 
+            onDismissRequest = {
                 showStatusDialog = false
                 settingsViewModel.clearFileStatus()
             },
-            title = { Text("File Status") },
+            title = { Text(stringResource(R.string.dialog_file_status_title)) },
             text = {
                 Box(modifier = Modifier
                     .fillMaxWidth()
@@ -211,11 +211,11 @@ fun HistoryScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewM
                 }
             },
             confirmButton = {
-                TextButton(onClick = { 
-                    showStatusDialog = false 
+                TextButton(onClick = {
+                    showStatusDialog = false
                     settingsViewModel.clearFileStatus()
                 }) {
-                    Text("Close")
+                    Text(stringResource(R.string.btn_close))
                 }
             }
         )
@@ -224,8 +224,8 @@ fun HistoryScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewM
     itemToDelete?.let { entry ->
         AlertDialog(
             onDismissRequest = { itemToDeleteId = null },
-            title = { Text("Delete Entry") },
-            text = { Text("What would you like to do with ${entry.fileName}?") },
+            title = { Text(stringResource(R.string.dialog_delete_title)) },
+            text = { Text(stringResource(R.string.dialog_delete_message, entry.fileName)) },
             confirmButton = {
                 Column(
                     modifier = Modifier.fillMaxWidth(),
@@ -242,12 +242,12 @@ fun HistoryScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewM
                                     fileId = id,
                                     onSuccess = {
                                         coroutineScope.launch {
-                                            snackbarHostState.showSnackbar("File deleted from server and recents")
+                                            snackbarHostState.showSnackbar(strDeletedFromServer)
                                         }
                                     },
                                     onError = { error ->
                                         coroutineScope.launch {
-                                            snackbarHostState.showSnackbar("Error: $error")
+                                            snackbarHostState.showSnackbar(context.getString(R.string.snackbar_error, error))
                                         }
                                     }
                                 )
@@ -257,7 +257,7 @@ fun HistoryScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewM
                             modifier = Modifier.fillMaxWidth(),
                             colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
                         ) {
-                            Text("Delete from server")
+                            Text(stringResource(R.string.btn_delete_from_server))
                         }
                     }
 
@@ -268,7 +268,7 @@ fun HistoryScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewM
                                 analytics.event(url = "/history", name = "remove_from_recents", data = mapOf("id" to entry.id))
                             }
                             coroutineScope.launch {
-                                snackbarHostState.showSnackbar("Removed from recents")
+                                snackbarHostState.showSnackbar(strRemovedFromRecents)
                             }
                             itemToDeleteId = null
                             deleteDirection = null
@@ -276,17 +276,17 @@ fun HistoryScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewM
                         modifier = Modifier.fillMaxWidth(),
                         colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.secondary)
                     ) {
-                        Text("Delete from recents")
+                        Text(stringResource(R.string.btn_delete_from_recents))
                     }
 
                     TextButton(
-                        onClick = { 
+                        onClick = {
                             itemToDeleteId = null
                             deleteDirection = null
                         },
                         modifier = Modifier.fillMaxWidth()
                     ) {
-                        Text("Cancel")
+                        Text(stringResource(R.string.btn_cancel))
                     }
                 }
             }
@@ -300,14 +300,15 @@ fun StatusContent(status: FileStatus, fileId: String, hapticsEnabled: Boolean) {
     val fileSize = status.file_size
     val timeRemaining = status.time_remaining
     val isEncrypted = status.is_encrypted
-    
+
     val clipboardManager = LocalClipboardManager.current
     val haptic = LocalHapticFeedback.current
     val coroutineScope = rememberCoroutineScope()
+    val resources = LocalContext.current.resources
     var showCopied by remember { mutableStateOf(false) }
 
     Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        StatusRow("ID (tap to copy)", fileId, modifier = Modifier.clickable {
+        StatusRow(stringResource(R.string.status_id_label), fileId, modifier = Modifier.clickable {
             clipboardManager.setText(AnnotatedString(fileId))
             CoroutineScope(Dispatchers.IO).launch {
                 analytics.event(url = "/history", name = "copy_id_from_status")
@@ -319,20 +320,24 @@ fun StatusContent(status: FileStatus, fileId: String, hapticsEnabled: Boolean) {
                 showCopied = false
             }
         })
-        
+
         AnimatedVisibility(visible = showCopied) {
             Text(
-                "ID copied to clipboard!",
+                stringResource(R.string.status_id_copied),
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(start = 8.dp)
             )
         }
 
-        StatusRow("Name", fileName)
-        StatusRow("Size", formatFileSize(fileSize))
-        StatusRow("Encryption", if (isEncrypted) "Active" else "None")
-        StatusRow("Expires in", formatDuration(timeRemaining))
+        StatusRow(stringResource(R.string.status_name_label), fileName)
+        StatusRow(stringResource(R.string.status_size_label), formatFileSize(fileSize))
+        StatusRow(
+            stringResource(R.string.status_encryption_label),
+            if (isEncrypted) stringResource(R.string.status_encryption_active)
+            else stringResource(R.string.status_encryption_none)
+        )
+        StatusRow(stringResource(R.string.status_expires_label), formatDuration(resources, timeRemaining))
     }
 }
 
@@ -350,8 +355,9 @@ fun StatusRow(label: String, value: String, modifier: Modifier = Modifier) {
 
 @Composable
 fun HistoryItem(entry: HistoryEntry, onInfoClick: () -> Unit) {
-    val timeAgo = formatTimestamp(entry.timestamp)
-    
+    val resources = LocalContext.current.resources
+    val timeAgo = formatTimestamp(resources, entry.timestamp)
+
     Card(
         modifier = Modifier.fillMaxWidth()
     ) {
@@ -366,9 +372,9 @@ fun HistoryItem(entry: HistoryEntry, onInfoClick: () -> Unit) {
                 contentDescription = null,
                 tint = if (entry.isUpload) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.secondary
             )
-            
+
             Spacer(modifier = Modifier.width(16.dp))
-            
+
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
@@ -380,19 +386,19 @@ fun HistoryItem(entry: HistoryEntry, onInfoClick: () -> Unit) {
                         Spacer(modifier = Modifier.width(4.dp))
                         Icon(
                             imageVector = Icons.Default.Lock,
-                            contentDescription = "Encrypted",
+                            contentDescription = stringResource(R.string.history_item_encrypted_desc),
                             modifier = Modifier.size(14.dp),
                             tint = MaterialTheme.colorScheme.outline
                         )
                     }
                 }
                 Text(
-                    text = "ID: ${entry.id}",
+                    text = stringResource(R.string.history_item_id, entry.id),
                     fontSize = 12.sp,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
-            
+
             Column(horizontalAlignment = Alignment.End) {
                 Text(
                     text = timeAgo,
@@ -403,7 +409,7 @@ fun HistoryItem(entry: HistoryEntry, onInfoClick: () -> Unit) {
                     IconButton(onClick = onInfoClick, modifier = Modifier.size(24.dp)) {
                         Icon(
                             imageVector = Icons.Default.Info,
-                            contentDescription = "Status",
+                            contentDescription = stringResource(R.string.history_item_status_desc),
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.size(18.dp)
                         )
@@ -421,19 +427,20 @@ private fun formatFileSize(size: Long): String {
     return String.format(Locale.getDefault(), "%.1f %s", size / 1024.0.pow(digitGroups.toDouble()), units[digitGroups])
 }
 
-private fun formatDuration(seconds: Long): String {
-    if (seconds <= 0) return "Expired"
+private fun formatDuration(resources: Resources, seconds: Long): String {
+    if (seconds <= 0) return resources.getString(R.string.duration_expired)
     val h = seconds / 3600
     val m = (seconds % 3600) / 60
-    return if (h > 0) "${h}h ${m}m" else "${m}m"
+    return if (h > 0) resources.getString(R.string.duration_hours_minutes, h, m)
+           else resources.getString(R.string.duration_minutes, m)
 }
 
-private fun formatTimestamp(timestamp: Long): String {
+private fun formatTimestamp(resources: Resources, timestamp: Long): String {
     val diff = System.currentTimeMillis() - timestamp
     return when {
-        diff < 60_000 -> "Just now"
-        diff < 3600_000 -> "${diff / 60_000}m ago"
-        diff < 86400_000 -> "${diff / 3600_000}h ago"
+        diff < 60_000 -> resources.getString(R.string.timestamp_just_now)
+        diff < 3600_000 -> resources.getString(R.string.timestamp_minutes_ago, (diff / 60_000).toInt())
+        diff < 86400_000 -> resources.getString(R.string.timestamp_hours_ago, (diff / 3600_000).toInt())
         else -> SimpleDateFormat("MMM d", Locale.getDefault()).format(Date(timestamp))
     }
 }
