@@ -1,6 +1,7 @@
 package dev.withcapsule.android.ui.viewmodel
 
 import android.content.ContentValues
+import android.webkit.MimeTypeMap
 import android.content.Context
 import android.net.Uri
 import android.os.Environment
@@ -29,7 +30,7 @@ import java.io.InputStream
 sealed class DownloadState {
     object Idle : DownloadState()
     data class Downloading(val progress: Float) : DownloadState()
-    data class Decrypting(val tempFile: File, val suggestedName: String, val progress: Float = 0f) : DownloadState()
+    data class Decrypting(val tempFile: File, val suggestedName: String, val fileId: String, val progress: Float = 0f) : DownloadState()
     data class Success(val uri: Uri, val fileName: String) : DownloadState()
     data class Error(val message: String) : DownloadState()
 }
@@ -62,7 +63,7 @@ class DownloadViewModel(private val repository: SettingsRepository) : ViewModel(
                     }
                     
                     if (isEncrypted) {
-                        _downloadState.value = DownloadState.Decrypting(tempFile, fileName, 0f)
+                        _downloadState.value = DownloadState.Decrypting(tempFile, fileName, id, 0f)
                     } else {
                         val finalUri = saveToFinalLocation(context, tempFile, fileName, downloadDirUri)
                         if (finalUri != null) {
@@ -90,9 +91,9 @@ class DownloadViewModel(private val repository: SettingsRepository) : ViewModel(
         }
     }
 
-    fun decryptAndSave(context: Context, tempFile: File, fileName: String, mnemonic: String, downloadDirUri: String?) {
+    fun decryptAndSave(context: Context, tempFile: File, fileName: String, fileId: String, mnemonic: String, downloadDirUri: String?) {
         viewModelScope.launch {
-            _downloadState.value = DownloadState.Decrypting(tempFile, fileName, 0f)
+            _downloadState.value = DownloadState.Decrypting(tempFile, fileName, fileId, 0f)
             
             try {
                 val normalizedMnemonic = mnemonic.trim().replace("\\s+".toRegex(), " ")
@@ -121,7 +122,7 @@ class DownloadViewModel(private val repository: SettingsRepository) : ViewModel(
                                 bytesRead += count
                                 if (totalSize > 0) {
                                     val progress = (bytesRead.toFloat() / totalSize).coerceIn(0f, 1f)
-                                    _downloadState.value = DownloadState.Decrypting(tempFile, fileName, progress)
+                                    _downloadState.value = DownloadState.Decrypting(tempFile, fileName, fileId, progress)
                                 }
                             }
                             override fun close() = fileInputStream.close()
@@ -139,7 +140,7 @@ class DownloadViewModel(private val repository: SettingsRepository) : ViewModel(
                 if (finalUri != null) {
                     repository.addHistoryEntry(
                         HistoryEntry(
-                            id = extractId(tempFile.name), // This is not ideal as we lost the ID here, but we can pass it down if needed
+                            id = fileId,
                             fileName = fileName,
                             timestamp = System.currentTimeMillis(),
                             isUpload = false,
@@ -204,9 +205,15 @@ class DownloadViewModel(private val repository: SettingsRepository) : ViewModel(
         }
     }
 
+    private fun mimeTypeFor(fileName: String): String {
+        val ext = fileName.substringAfterLast('.', "").lowercase()
+        return MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext) ?: "application/octet-stream"
+    }
+
     private fun saveUsingMediaStore(context: Context, sourceFile: File, fileName: String): Uri? {
         val contentValues = ContentValues().apply {
             put(MediaStore.MediaColumns.DISPLAY_NAME, fileName)
+            put(MediaStore.MediaColumns.MIME_TYPE, mimeTypeFor(fileName))
             put(MediaStore.MediaColumns.RELATIVE_PATH, "${Environment.DIRECTORY_DOWNLOADS}/Capsules")
         }
 
@@ -232,7 +239,7 @@ class DownloadViewModel(private val repository: SettingsRepository) : ViewModel(
         val existingFile = pickedDir.findFile(fileName)
         existingFile?.delete()
         
-        val newFile = pickedDir.createFile("application/octet-stream", fileName) ?: return null
+        val newFile = pickedDir.createFile(mimeTypeFor(fileName), fileName) ?: return null
         
         return newFile.uri.also { targetUri ->
             context.contentResolver.openOutputStream(targetUri)?.use { output ->

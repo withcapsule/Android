@@ -112,7 +112,7 @@ fun HistoryScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewM
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     history.forEach { entry ->
-                        key(entry.id) {
+                        key("${entry.id}_${entry.timestamp}") {
                             val isBeingDeleted = itemToDeleteId == entry.id
                             val swipeToDismissState = rememberSwipeToDismissBoxState(
                                 initialValue = if (isBeingDeleted) (deleteDirection ?: SwipeToDismissBoxValue.EndToStart) else SwipeToDismissBoxValue.Settled,
@@ -263,7 +263,7 @@ fun HistoryScreen(paddingValues: PaddingValues, settingsViewModel: SettingsViewM
 
                     Button(
                         onClick = {
-                            settingsViewModel.removeHistoryItem(entry.id)
+                            settingsViewModel.removeHistoryItem(entry.id, entry.timestamp)
                             CoroutineScope(Dispatchers.IO).launch {
                                 analytics.event(url = "/history", name = "remove_from_recents", data = mapOf("id" to entry.id))
                             }

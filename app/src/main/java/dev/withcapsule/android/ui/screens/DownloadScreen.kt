@@ -1,6 +1,7 @@
 package dev.withcapsule.android.ui.screens
 
 import android.Manifest
+import android.webkit.MimeTypeMap
 import android.app.Activity
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -258,7 +259,7 @@ fun DownloadScreen(
                             Spacer(modifier = Modifier.height(16.dp))
                             Button(
                                 onClick = {
-                                    downloadViewModel.decryptAndSave(context, state.tempFile, state.suggestedName, mnemonic, downloadDirUri)
+                                    downloadViewModel.decryptAndSave(context, state.tempFile, state.suggestedName, state.fileId, mnemonic, downloadDirUri)
                                     CoroutineScope(Dispatchers.IO).launch {
                                         analytics.event(url = "/download", name = "decryption_started")
                                     }
@@ -280,8 +281,11 @@ fun DownloadScreen(
                                 Text(stringResource(R.string.download_file_saved, state.fileName), fontSize = 12.sp)
                                 Button(
                                     onClick = {
+                                        val ext = state.fileName.substringAfterLast('.', "").lowercase()
+                                        val mime = MimeTypeMap.getSingleton().getMimeTypeFromExtension(ext)
+                                            ?: "application/octet-stream"
                                         val intent = Intent(Intent.ACTION_VIEW).apply {
-                                            setDataAndType(state.uri, "application/octet-stream")
+                                            setDataAndType(state.uri, mime)
                                             addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
                                         }
                                         context.startActivity(Intent.createChooser(intent, strOpenFile))

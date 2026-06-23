@@ -161,7 +161,7 @@ class SettingsRepository(private val context: Context) {
         }
     }
 
-    suspend fun removeHistoryEntry(id: String) {
+    suspend fun removeHistoryEntry(id: String, timestamp: Long) {
         context.dataStore.edit { preferences ->
             val currentJson = preferences[PreferencesKeys.HISTORY_JSON] ?: "[]"
             val currentList = try {
@@ -169,7 +169,20 @@ class SettingsRepository(private val context: Context) {
             } catch (e: Exception) {
                 emptyList()
             }
-            
+            val index = currentList.indexOfFirst { it.id == id && it.timestamp == timestamp }
+            val newList = if (index >= 0) currentList.toMutableList().apply { removeAt(index) } else currentList
+            preferences[PreferencesKeys.HISTORY_JSON] = Json.encodeToString(newList)
+        }
+    }
+
+    suspend fun removeAllHistoryEntriesById(id: String) {
+        context.dataStore.edit { preferences ->
+            val currentJson = preferences[PreferencesKeys.HISTORY_JSON] ?: "[]"
+            val currentList = try {
+                Json.decodeFromString<List<HistoryEntry>>(currentJson)
+            } catch (e: Exception) {
+                emptyList()
+            }
             val newList = currentList.filter { it.id != id }
             preferences[PreferencesKeys.HISTORY_JSON] = Json.encodeToString(newList)
         }

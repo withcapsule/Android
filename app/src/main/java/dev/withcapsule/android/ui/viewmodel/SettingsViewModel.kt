@@ -241,9 +241,9 @@ class SettingsViewModel(private val repository: SettingsRepository) : ViewModel(
         }
     }
 
-    fun removeHistoryItem(fileId: String) {
+    fun removeHistoryItem(fileId: String, timestamp: Long) {
         viewModelScope.launch {
-            repository.removeHistoryEntry(fileId)
+            repository.removeHistoryEntry(fileId, timestamp)
         }
     }
 
@@ -254,7 +254,7 @@ class SettingsViewModel(private val repository: SettingsRepository) : ViewModel(
                 val response = apiService.deleteFile(fileId)
 
                 if (response.isSuccessful) {
-                    repository.removeHistoryEntry(fileId)
+                    repository.removeAllHistoryEntriesById(fileId)
                     onSuccess()
                 } else {
                     val error = response.errorBody()?.string() ?: "Server error ${response.code()}"
