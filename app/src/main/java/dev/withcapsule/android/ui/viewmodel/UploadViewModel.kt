@@ -172,20 +172,11 @@ class UploadViewModel(private val repository: SettingsRepository) : ViewModel() 
     }
 
     private fun extractFileId(body: String): String? {
-        val markers = listOf(
-            "File ID for downloading is ",
-            "File ID is "
-        )
-        
-        for (marker in markers) {
-            val start = body.indexOf(marker)
-            if (start != -1) {
-                val after = body.substring(start + marker.length).trim()
-                val id = after.takeWhile { it.isLetterOrDigit() }
-                if (id.isNotEmpty()) return id
-            }
-        }
-        return null
+        val marker = "File ID for downloading is "
+        val start = body.indexOf(marker)
+        if (start == -1) return null
+        val id = body.substring(start + marker.length).trim().takeWhile { it.isLetterOrDigit() }
+        return id.ifEmpty { null }
     }
 
     private fun getFileName(context: Context, uri: Uri): String? {

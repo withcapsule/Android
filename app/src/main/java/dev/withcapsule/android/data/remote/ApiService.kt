@@ -17,6 +17,7 @@ import retrofit2.http.Streaming
 data class FileStatus(
     val file_name: String = "Unknown",
     val file_size: Long = 0,
+    val upload_time: Long = 0,
     val time_remaining: Long = 0,
     val is_encrypted: Boolean = false
 )
