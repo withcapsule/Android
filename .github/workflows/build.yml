@@ -2,11 +2,8 @@ name: Build & Release APK
 
 on:
   push:
-    branches: [ master ]
     tags:
       - 'v*'
-  pull_request:
-    branches: [ master ]
 
 jobs:
   build:
@@ -31,23 +28,16 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x ./gradlew
 
-      # Decode the base64 keystore stored in secrets and write it to disk
       - name: Decode keystore
-        if: ${{ github.event_name != 'pull_request' }}
         run: |
           echo "${{ secrets.RELEASE_KEYSTORE_BASE64 }}" | base64 --decode > ${{ runner.temp }}/release.jks
 
       - name: Build release APK (signed)
-        if: ${{ github.event_name != 'pull_request' }}
         env:
           KEYSTORE_PATH: ${{ runner.temp }}/release.jks
           KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
           KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
           KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
-        run: ./gradlew assembleRelease
-
-      - name: Build release APK (unsigned, PR check)
-        if: ${{ github.event_name == 'pull_request' }}
         run: ./gradlew assembleRelease
 
       - name: Upload APK artifact
@@ -57,9 +47,7 @@ jobs:
           path: app/build/outputs/apk/release/*.apk
           retention-days: 30
 
-      # Only create a GitHub Release when a version tag is pushed (e.g. v1.0.0)
       - name: Create GitHub Release
-        if: startsWith(github.ref, 'refs/tags/v')
         uses: softprops/action-gh-release@v2
         with:
           files: app/build/outputs/apk/release/*.apk
