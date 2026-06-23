@@ -117,7 +117,7 @@
     <string name="settings_theme_title">App Theme</string>
     <string name="settings_privacy_title">Privacy</string>
     <string name="settings_analytics_label">Allow Anonymous Analytics</string>
-    <string name="app_version">Capsule Android v1.0</string>
+    <string name="app_version">Capsule Android v0.2</string>
 
     <!-- Onboarding screen -->
     <string name="onboarding_camera_title">Camera Access</string>
