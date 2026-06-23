@@ -2,8 +2,8 @@
 <h1 align="center"><b>Capsule for Android</b></h1>
 <h4 align="center">Send and receive files privately, straight from your Android device</h4>
 <p align="center">
-    <a href="https://github.com/Seanathan10/Android/releases">
-        <img src="https://img.shields.io/github/release/Seanathan10/Android.svg" alt="GitHub release">
+    <a href="https://github.com/withcapsule/Android/releases">
+        <img src="https://img.shields.io/github/release/withcapsule/Android.svg" alt="GitHub release">
     </a>
     <img alt="Minimum SDK" src="https://img.shields.io/badge/API-29%2B-green">
 </p>
