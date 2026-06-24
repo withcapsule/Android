@@ -43,19 +43,16 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavDestination.Companion.hierarchy
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -83,6 +80,7 @@ import kotlinx.serialization.Serializable
 
 class MainActivity : ComponentActivity() {
     private lateinit var uploadViewModel: UploadViewModel
+    private lateinit var downloadViewModel: DownloadViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
         analytics = AnalyticsManager(this)
@@ -96,12 +94,14 @@ class MainActivity : ComponentActivity() {
                 return when {
                     modelClass.isAssignableFrom(SettingsViewModel::class.java) -> SettingsViewModel(settingsRepository) as T
                     modelClass.isAssignableFrom(UploadViewModel::class.java) -> UploadViewModel(settingsRepository) as T
+                    modelClass.isAssignableFrom(DownloadViewModel::class.java) -> DownloadViewModel(settingsRepository) as T
                     else -> throw IllegalArgumentException("Unknown ViewModel class")
                 }
             }
         }
         
         uploadViewModel = ViewModelProvider(this, viewModelFactory)[UploadViewModel::class.java]
+        downloadViewModel = ViewModelProvider(this, viewModelFactory)[DownloadViewModel::class.java]
         val settingsViewModel = ViewModelProvider(this, viewModelFactory)[SettingsViewModel::class.java]
 
         CoroutineScope(Dispatchers.IO).launch {
@@ -139,7 +139,7 @@ class MainActivity : ComponentActivity() {
             }
 
             CapsuleTheme(darkTheme = darkTheme) {
-                MainContent(settingsViewModel, uploadViewModel)
+                MainContent(settingsViewModel, uploadViewModel, downloadViewModel)
             }
         }
     }
@@ -150,37 +150,35 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun handleIntent(intent: Intent?) {
-        if (intent?.action == Intent.ACTION_SEND) {
-            val uri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-                intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
-            } else {
-                @Suppress("DEPRECATION")
-                intent.getParcelableExtra<Parcelable>(Intent.EXTRA_STREAM) as? Uri
-            }
-            uri?.let { 
-                CoroutineScope(Dispatchers.IO).launch {
-                    analytics.event(url = "/", name = "shared_intent_received")
+        when (intent?.action) {
+            Intent.ACTION_SEND -> {
+                val uri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    intent.getParcelableExtra(Intent.EXTRA_STREAM, Uri::class.java)
+                } else {
+                    @Suppress("DEPRECATION")
+                    intent.getParcelableExtra<Parcelable>(Intent.EXTRA_STREAM) as? Uri
                 }
-                uploadViewModel.setSharedFileUri(it) 
+                uri?.let {
+                    CoroutineScope(Dispatchers.IO).launch {
+                        analytics.event(url = "/", name = "shared_intent_received")
+                    }
+                    uploadViewModel.setSharedFileUri(it)
+                }
+            }
+            Intent.ACTION_VIEW -> {
+                intent.dataString?.let { url ->
+                    CoroutineScope(Dispatchers.IO).launch {
+                        analytics.event(url = "/", name = "deeplink_received")
+                    }
+                    downloadViewModel.setPendingDownloadUrl(url)
+                }
             }
         }
     }
 }
 
 @Composable
-fun MainContent(settingsViewModel: SettingsViewModel, uploadViewModel: UploadViewModel) {
-    val context = LocalContext.current
-    val settingsRepository = remember { SettingsRepository(context) }
-
-    val downloadViewModel: DownloadViewModel = viewModel(
-        factory = object : ViewModelProvider.Factory {
-            @Suppress("UNCHECKED_CAST")
-            override fun <T : ViewModel> create(modelClass: Class<T>): T {
-                return DownloadViewModel(settingsRepository) as T
-            }
-        }
-    )
-    
+fun MainContent(settingsViewModel: SettingsViewModel, uploadViewModel: UploadViewModel, downloadViewModel: DownloadViewModel) {
     val onboardingCompleted by settingsViewModel.onboardingCompleted.collectAsState()
 
     if (onboardingCompleted) {
@@ -215,10 +213,23 @@ fun AppNavigation(
     val isScannerVisible = currentDestination?.hasRoute(QRScanner::class) == true
     
     val sharedFileUri by uploadViewModel.sharedFileUri.collectAsState()
-    
+    val pendingDownloadUrl by downloadViewModel.pendingDownloadUrl.collectAsState()
+
     LaunchedEffect(sharedFileUri) {
         if (sharedFileUri != null) {
             navController.navigate(Upload) {
+                popUpTo(navController.graph.findStartDestination().id) {
+                    saveState = true
+                }
+                launchSingleTop = true
+                restoreState = true
+            }
+        }
+    }
+
+    LaunchedEffect(pendingDownloadUrl) {
+        if (pendingDownloadUrl != null) {
+            navController.navigate(Download) {
                 popUpTo(navController.graph.findStartDestination().id) {
                     saveState = true
                 }

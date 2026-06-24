@@ -115,6 +115,14 @@ fun DownloadScreen(
     var idOrUrl by remember { mutableStateOf("") }
     var mnemonic by remember { mutableStateOf("") }
 
+    val pendingDownloadUrl by downloadViewModel.pendingDownloadUrl.collectAsState()
+    LaunchedEffect(pendingDownloadUrl) {
+        pendingDownloadUrl?.let { url ->
+            idOrUrl = url
+            downloadViewModel.setPendingDownloadUrl(null)
+        }
+    }
+
     var pendingTargetName by rememberSaveable { mutableStateOf<String?>(null) }
     val pendingTarget = pendingTargetName?.let { ScannerTarget.valueOf(it) }
 

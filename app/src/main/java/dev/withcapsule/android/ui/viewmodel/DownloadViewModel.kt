@@ -39,6 +39,13 @@ class DownloadViewModel(private val repository: SettingsRepository) : ViewModel(
     private val _downloadState = MutableStateFlow<DownloadState>(DownloadState.Idle)
     val downloadState: StateFlow<DownloadState> = _downloadState.asStateFlow()
 
+    private val _pendingDownloadUrl = MutableStateFlow<String?>(null)
+    val pendingDownloadUrl: StateFlow<String?> = _pendingDownloadUrl.asStateFlow()
+
+    fun setPendingDownloadUrl(url: String?) {
+        _pendingDownloadUrl.value = url
+    }
+
     fun startDownload(context: Context, baseUrl: String, idOrUrl: String, downloadDirUri: String?) {
         val id = extractId(idOrUrl)
         
