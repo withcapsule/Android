@@ -166,11 +166,12 @@ class DownloadViewModel(private val repository: SettingsRepository) : ViewModel(
     }
 
     private fun extractId(input: String): String {
-        return if (input.contains("/download/")) {
+        val id = if (input.contains("/download/")) {
             input.substringAfter("/download/").substringBefore("/").substringBefore("?")
         } else {
             input
         }
+        return id.trim('-')
     }
 
     private fun createApiService(baseUrl: String): ApiService {

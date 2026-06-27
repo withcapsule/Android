@@ -43,6 +43,7 @@
     <string name="download_icon_desc">Receive</string>
     <string name="download_title">Receive File</string>
     <string name="download_field_label">File ID or Download URL</string>
+    <string name="download_field_hint">Spacebar auto-inserts a hyphen</string>
     <string name="btn_scan_qr">Scan QR</string>
     <string name="btn_download">Download</string>
     <string name="download_downloading">Downloading...</string>

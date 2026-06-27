@@ -202,8 +202,9 @@ fun DownloadScreen(
 
         OutlinedTextField(
             value = idOrUrl,
-            onValueChange = { idOrUrl = it },
+            onValueChange = { idOrUrl = it.replace(' ', '-') },
             label = { Text(stringResource(R.string.download_field_label)) },
+            supportingText = { Text(stringResource(R.string.download_field_hint)) },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
             trailingIcon = {
