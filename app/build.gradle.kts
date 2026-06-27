@@ -16,8 +16,8 @@ android {
         applicationId = "dev.withcapsule.android"
         minSdk = 29
         targetSdk = 36
-        versionCode = 5
-        versionName = "0.3"
+        versionCode = 6
+        versionName = "0.3.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
