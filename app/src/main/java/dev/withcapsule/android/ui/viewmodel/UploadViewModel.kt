@@ -175,7 +175,7 @@ class UploadViewModel(private val repository: SettingsRepository) : ViewModel() 
         val marker = "File ID for downloading is "
         val start = body.indexOf(marker)
         if (start == -1) return null
-        val id = body.substring(start + marker.length).trim().takeWhile { it.isLetterOrDigit() }
+        val id = body.substring(start + marker.length).trim().takeWhile { it.isLetterOrDigit() || it == '-' }
         return id.ifEmpty { null }
     }
 
