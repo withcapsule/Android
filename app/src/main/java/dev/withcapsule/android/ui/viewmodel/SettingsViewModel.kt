@@ -35,7 +35,7 @@ class SettingsViewModel(private val repository: SettingsRepository) : ViewModel(
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
     val themeMode: StateFlow<ThemeMode> = repository.themeMode
-        .map { mode -> 
+        .map { mode ->
             try { ThemeMode.valueOf(mode) } catch (e: Exception) { ThemeMode.SYSTEM }
         }
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), ThemeMode.SYSTEM)
@@ -96,7 +96,7 @@ class SettingsViewModel(private val repository: SettingsRepository) : ViewModel(
             _serverOption.value = repository.serverOption.first()
             _customUrl.value = repository.customUrl.first()
             _customProtocolIndex.value = repository.customProtocolIndex.first()
-            
+
             // Also wait for onboarding state to be loaded from DataStore
             repository.onboardingCompleted.first()
 
@@ -184,7 +184,7 @@ class SettingsViewModel(private val repository: SettingsRepository) : ViewModel(
         viewModelScope.launch {
             _isPinging.value = true
             _pingResponse.value = null
-            
+
             try {
                 val apiService = RetrofitClient.getApiService(baseUrl)
                 val response = apiService.ping()
@@ -196,7 +196,7 @@ class SettingsViewModel(private val repository: SettingsRepository) : ViewModel(
             }
         }
     }
-    
+
     fun clearPingResponse() {
         _pingResponse.value = null
     }

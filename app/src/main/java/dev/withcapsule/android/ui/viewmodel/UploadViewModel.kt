@@ -59,20 +59,20 @@ class UploadViewModel(private val repository: SettingsRepository) : ViewModel() 
                     _uploadState.value = UploadState.Encrypting(0f)
                     val generatedMnemonic = Mnemonics.MnemonicCode(Mnemonics.WordCount.COUNT_12).words.joinToString(" ") { String(it) }
                     mnemonic = generatedMnemonic
-                    
+
                     val tempFile = File(context.cacheDir, "upload_encrypted_${System.currentTimeMillis()}")
                     tempEncryptedFile = tempFile
-                    
+
                     withContext(Dispatchers.IO) {
                         System.gc()
                         val recipient = ScryptRecipient(generatedMnemonic.toByteArray())
-                        
+
                         context.contentResolver.openInputStream(fileUri)?.use { inputStream ->
                             FileOutputStream(tempFile).use { out ->
                                 val progressInputStream = object : InputStream() {
                                     private var bytesRead = 0L
                                     private var lastProgress = -1f
-                                    
+
                                     override fun read(): Int {
                                         val byte = inputStream.read()
                                         if (byte != -1) updateProgress(1)
@@ -95,7 +95,7 @@ class UploadViewModel(private val repository: SettingsRepository) : ViewModel() 
                                     }
                                     override fun close() = inputStream.close()
                                 }
-                                
+
                                 Age.encryptStream(listOf<Recipient>(recipient), progressInputStream, out)
                             }
                         } ?: throw Exception("Failed to open input stream")
@@ -110,11 +110,11 @@ class UploadViewModel(private val repository: SettingsRepository) : ViewModel() 
                                 val totalToUpload = contentLength()
                                 var read: Long
                                 var lastProgress = -1f
-                                
+
                                 while (source.read(sink.buffer, 65536).also { read = it } != -1L) {
                                     totalWritten += read
                                     sink.flush()
-                                    
+
                                     if (totalToUpload > 0) {
                                         val progress = (totalWritten.toFloat() / totalToUpload).coerceIn(0f, 1f)
                                         if (progress - lastProgress >= 0.01f || totalWritten == totalToUpload) {
@@ -137,11 +137,11 @@ class UploadViewModel(private val repository: SettingsRepository) : ViewModel() 
                                     var totalWritten = 0L
                                     var read: Long
                                     var lastProgress = -1f
-                                    
+
                                     while (source.read(sink.buffer, 65536).also { read = it } != -1L) {
                                         totalWritten += read
                                         sink.flush()
-                                        
+
                                         if (totalToUpload > 0) {
                                             val progress = (totalWritten.toFloat() / totalToUpload).coerceIn(0f, 1f)
                                             if (progress - lastProgress >= 0.01f || totalWritten == totalToUpload) {
@@ -159,7 +159,7 @@ class UploadViewModel(private val repository: SettingsRepository) : ViewModel() 
                 // Start Upload
                 _uploadState.value = UploadState.Uploading(0f)
                 val apiService = createApiService(baseUrl)
-                
+
                 val body = MultipartBody.Part.createFormData("f", fileName, requestFile)
                 val response = apiService.uploadFile(encrypt, body)
 
@@ -168,7 +168,7 @@ class UploadViewModel(private val repository: SettingsRepository) : ViewModel() 
                     val fileId = extractFileId(responseText)
                     if (fileId != null) {
                         val downloadUrl = if (baseUrl.endsWith("/")) "${baseUrl}download/$fileId" else "$baseUrl/download/$fileId"
-                        
+
                         repository.addHistoryEntry(
                             HistoryEntry(
                                 id = fileId,
@@ -188,7 +188,7 @@ class UploadViewModel(private val repository: SettingsRepository) : ViewModel() 
                     val error = response.errorBody()?.string() ?: "Upload failed: ${response.code()}"
                     _uploadState.value = UploadState.Error(error)
                 }
-                
+
                 tempEncryptedFile?.delete()
 
             } catch (e: Exception) {

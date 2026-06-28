@@ -26,6 +26,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.io.FileOutputStream
 import java.io.InputStream
+import kotlin.text.contains
 
 sealed class DownloadState {
     object Idle : DownloadState()
@@ -48,27 +49,27 @@ class DownloadViewModel(private val repository: SettingsRepository) : ViewModel(
 
     fun startDownload(context: Context, baseUrl: String, idOrUrl: String, downloadDirUri: String?) {
         val id = extractId(idOrUrl)
-        
+
         viewModelScope.launch {
             _downloadState.value = DownloadState.Downloading(0f)
-            
+
             try {
                 val apiService = createApiService(baseUrl)
                 val response = apiService.downloadFile(id)
-                
+
                 if (response.isSuccessful) {
                     val body = response.body() ?: throw Exception("Empty response body")
                     val totalBytes = body.contentLength()
                     val isEncrypted = response.headers()["X-Encrypted"]?.equals("true", ignoreCase = true) ?: false
                     val contentDisposition = response.headers()["Content-Disposition"]
                     val fileName = parseFileName(contentDisposition) ?: "downloaded_file"
-                    
+
                     val tempFile = File(context.cacheDir, "temp_download_${System.currentTimeMillis()}")
-                    
+
                     saveToFileWithProgress(body.byteStream(), tempFile, totalBytes) { progress ->
                         _downloadState.value = DownloadState.Downloading(progress)
                     }
-                    
+
                     if (isEncrypted) {
                         _downloadState.value = DownloadState.Decrypting(tempFile, fileName, id, 0f)
                     } else {
@@ -101,16 +102,16 @@ class DownloadViewModel(private val repository: SettingsRepository) : ViewModel(
     fun decryptAndSave(context: Context, tempFile: File, fileName: String, fileId: String, mnemonic: String, downloadDirUri: String?) {
         viewModelScope.launch {
             _downloadState.value = DownloadState.Decrypting(tempFile, fileName, fileId, 0f)
-            
+
             try {
                 val normalizedMnemonic = mnemonic.trim().replace("\\s+".toRegex(), " ")
-                
+
                 val decryptedFile = withContext(Dispatchers.IO) {
                     System.gc() // Try to free up memory before SCrypt allocation
                     val identity = ScryptIdentity(normalizedMnemonic.toByteArray())
                     val totalSize = tempFile.length()
                     val out = File(context.cacheDir, "decrypted_${System.currentTimeMillis()}")
-                    
+
                     // Tracking progress by wrapping the InputStream instead of OutputStream
                     tempFile.inputStream().use { fileInputStream ->
                         val progressInputStream = object : InputStream() {
@@ -141,7 +142,7 @@ class DownloadViewModel(private val repository: SettingsRepository) : ViewModel(
                     }
                     out
                 }
-                
+
                 val finalUri = saveToFinalLocation(context, decryptedFile, fileName, downloadDirUri)
                 tempFile.delete()
                 if (finalUri != null) {
@@ -179,8 +180,8 @@ class DownloadViewModel(private val repository: SettingsRepository) : ViewModel(
     }
 
     private suspend fun saveToFileWithProgress(
-        inputStream: InputStream, 
-        file: File, 
+        inputStream: InputStream,
+        file: File,
         totalBytes: Long,
         onProgress: (Float) -> Unit
     ) = withContext(Dispatchers.IO) {
@@ -201,9 +202,9 @@ class DownloadViewModel(private val repository: SettingsRepository) : ViewModel(
     }
 
     private suspend fun saveToFinalLocation(
-        context: Context, 
-        sourceFile: File, 
-        fileName: String, 
+        context: Context,
+        sourceFile: File,
+        fileName: String,
         downloadDirUri: String?
     ): Uri? = withContext(Dispatchers.IO) {
         if (downloadDirUri == null) {
@@ -227,7 +228,7 @@ class DownloadViewModel(private val repository: SettingsRepository) : ViewModel(
 
         val contentResolver = context.contentResolver
         val uri = contentResolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, contentValues)
-        
+
         return uri?.also { targetUri ->
             contentResolver.openOutputStream(targetUri)?.use { output ->
                 sourceFile.inputStream().use { input ->
@@ -240,15 +241,15 @@ class DownloadViewModel(private val repository: SettingsRepository) : ViewModel(
 
     private fun saveUsingSAF(context: Context, sourceFile: File, fileName: String, treeUriStr: String): Uri? {
         val treeUri = treeUriStr.toUri()
-        
+
         val pickedDir = DocumentFile.fromTreeUri(context, treeUri) ?: return null
         if (!pickedDir.canWrite()) return null
-        
+
         val existingFile = pickedDir.findFile(fileName)
         existingFile?.delete()
-        
+
         val newFile = pickedDir.createFile(mimeTypeFor(fileName), fileName) ?: return null
-        
+
         return newFile.uri.also { targetUri ->
             context.contentResolver.openOutputStream(targetUri)?.use { output ->
                 sourceFile.inputStream().use { input ->
@@ -261,12 +262,42 @@ class DownloadViewModel(private val repository: SettingsRepository) : ViewModel(
 
     private fun parseFileName(contentDisposition: String?): String? {
         if (contentDisposition == null) return null
-        return contentDisposition.split(";").find { it.trim().startsWith("filename=") }
+        val raw = contentDisposition.split(";").find { it.trim().startsWith("filename=") }
             ?.substringAfter("filename=")
             ?.trim()
             ?.removeSurrounding("\"")
+            ?: return null
+        return sanitizeFileName(raw)
     }
-    
+
+
+
+    companion object {
+        internal fun sanitizeFileName( raw: String ): String? {
+            if (raw.split('/', '\\').any { it == ".." }) return null
+
+            val lastSlashIndex = raw.lastIndexOfAny( charArrayOf( '/', '\\' ) )
+
+            val trimmed: String = if( lastSlashIndex == -1 ) {
+                raw.trim()
+            } else {
+                raw.substring( lastSlashIndex + 1 ).trim()
+            }
+
+            if( trimmed.isEmpty() || trimmed == "." || trimmed == ".." ) return null
+
+            val cleaned = StringBuilder()
+
+            for( character in trimmed ) {
+                if( character.code >= 0x20 && character.code != 0x7F && character !in "/\\:*?\"<>|" ) {
+                    cleaned.append( character )
+                }
+            }
+
+            return cleaned.toString().take( 255 )
+        }
+    }
+
     fun resetState() {
         _downloadState.value = DownloadState.Idle
     }
