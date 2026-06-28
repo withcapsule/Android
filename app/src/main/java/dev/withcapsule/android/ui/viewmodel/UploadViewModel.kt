@@ -71,6 +71,8 @@ class UploadViewModel(private val repository: SettingsRepository) : ViewModel() 
                             FileOutputStream(tempFile).use { out ->
                                 val progressInputStream = object : InputStream() {
                                     private var bytesRead = 0L
+                                    private var lastProgress = -1f
+                                    
                                     override fun read(): Int {
                                         val byte = inputStream.read()
                                         if (byte != -1) updateProgress(1)
@@ -84,7 +86,11 @@ class UploadViewModel(private val repository: SettingsRepository) : ViewModel() 
                                     private fun updateProgress(count: Long) {
                                         bytesRead += count
                                         if (originalSize > 0) {
-                                            _uploadState.value = UploadState.Encrypting(bytesRead.toFloat() / originalSize)
+                                            val progress = (bytesRead.toFloat() / originalSize).coerceIn(0f, 1f)
+                                            if (progress - lastProgress >= 0.01f || bytesRead == originalSize) {
+                                                _uploadState.value = UploadState.Encrypting(progress)
+                                                lastProgress = progress
+                                            }
                                         }
                                     }
                                     override fun close() = inputStream.close()
@@ -101,11 +107,21 @@ class UploadViewModel(private val repository: SettingsRepository) : ViewModel() 
                         override fun writeTo(sink: BufferedSink) {
                             tempFile.source().use { source ->
                                 var totalWritten = 0L
-                                val totalToUpload = tempFile.length()
+                                val totalToUpload = contentLength()
                                 var read: Long
-                                while (source.read(sink.buffer, 8192).also { read = it } != -1L) {
+                                var lastProgress = -1f
+                                
+                                while (source.read(sink.buffer, 65536).also { read = it } != -1L) {
                                     totalWritten += read
-                                    _uploadState.value = UploadState.Uploading(totalWritten.toFloat() / totalToUpload)
+                                    sink.flush()
+                                    
+                                    if (totalToUpload > 0) {
+                                        val progress = (totalWritten.toFloat() / totalToUpload).coerceIn(0f, 1f)
+                                        if (progress - lastProgress >= 0.01f || totalWritten == totalToUpload) {
+                                            _uploadState.value = UploadState.Uploading(progress)
+                                            lastProgress = progress
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -115,13 +131,24 @@ class UploadViewModel(private val repository: SettingsRepository) : ViewModel() 
                         override fun contentType() = "application/octet-stream".toMediaTypeOrNull()
                         override fun contentLength() = originalSize
                         override fun writeTo(sink: BufferedSink) {
+                            val totalToUpload = contentLength()
                             context.contentResolver.openInputStream(fileUri)?.use { input ->
                                 input.source().use { source ->
                                     var totalWritten = 0L
                                     var read: Long
-                                    while (source.read(sink.buffer, 8192).also { read = it } != -1L) {
+                                    var lastProgress = -1f
+                                    
+                                    while (source.read(sink.buffer, 65536).also { read = it } != -1L) {
                                         totalWritten += read
-                                        _uploadState.value = UploadState.Uploading(totalWritten.toFloat() / originalSize)
+                                        sink.flush()
+                                        
+                                        if (totalToUpload > 0) {
+                                            val progress = (totalWritten.toFloat() / totalToUpload).coerceIn(0f, 1f)
+                                            if (progress - lastProgress >= 0.01f || totalWritten == totalToUpload) {
+                                                _uploadState.value = UploadState.Uploading(progress)
+                                                lastProgress = progress
+                                            }
+                                        }
                                     }
                                 }
                             }
