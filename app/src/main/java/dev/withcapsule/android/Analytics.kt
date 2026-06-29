@@ -8,10 +8,13 @@ import dev.appoutlet.umami.api.identify
 import dev.withcapsule.android.data.local.SettingsRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 class AnalyticsManager(context: Context) {
+    private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
+
     private val screenResolution: String =
         context.resources.displayMetrics.let { "${it.widthPixels}x${it.heightPixels}" }
 
@@ -30,25 +33,33 @@ class AnalyticsManager(context: Context) {
     private var isEnabled = true
 
     init {
-        CoroutineScope(Dispatchers.IO).launch {
+        scope.launch {
             isEnabled = repository.anonymousAnalyticsEnabled.first()
         }
     }
 
     fun event(url: String, name: String, data: Map<String, String>? = null) {
-        CoroutineScope(Dispatchers.IO).launch {
-            isEnabled = repository.anonymousAnalyticsEnabled.first()
-            if (isEnabled) {
-                umami.event(url = url, name = name, data = data)
+        scope.launch {
+            try {
+                isEnabled = repository.anonymousAnalyticsEnabled.first()
+                if (isEnabled) {
+                    umami.event(url = url, name = name, data = data)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
     }
 
     fun identify(data: Map<String, String>) {
-        CoroutineScope(Dispatchers.IO).launch {
-            isEnabled = repository.anonymousAnalyticsEnabled.first()
-            if (isEnabled) {
-                umami.identify(data = data)
+        scope.launch {
+            try {
+                isEnabled = repository.anonymousAnalyticsEnabled.first()
+                if (isEnabled) {
+                    umami.identify(data = data)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
     }

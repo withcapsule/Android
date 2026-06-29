@@ -60,6 +60,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.toRoute
 import dev.withcapsule.android.data.local.SettingsRepository
 import dev.withcapsule.android.ui.screens.DownloadScreen
 import dev.withcapsule.android.ui.screens.HistoryScreen
@@ -336,9 +337,7 @@ fun AppNavigation(
                         slideOutVertically(targetOffsetY = { it }, animationSpec = tween(300)) + fadeOut()
                     }
                 ) { backStackEntry ->
-                    val route: QRScanner = backStackEntry.arguments?.let { 
-                        QRScanner(target = backStackEntry.arguments?.getString("target") ?: "ID_URL")
-                    } ?: QRScanner("ID_URL")
+                    val route = backStackEntry.toRoute<QRScanner>()
                     
                     QRScannerScreen(
                         target = ScannerTarget.valueOf(route.target),
